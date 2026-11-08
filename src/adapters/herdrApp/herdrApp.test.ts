@@ -58,11 +58,11 @@ describe("installMod", () => {
     for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "model.test.js"])
       await writeFile(path.join(source, f), f);
     const home = await mkdtemp(path.join(tmpdir(), "brigade-herdr-home-"));
-    const target = await installMod(source, home, '/state/with "quotes"');
+    const target = await installMod(source, home, { stateDir: '/state/with "quotes"', configFile: "/c/config.json" });
     expect(target).toBe(path.join(home, "mods", "brigade"));
     expect((await readdir(target)).sort()).toEqual(["brigade.svg", "config.js", "main.js", "mod.json", "model.js"]);
     expect(await readFile(path.join(target, "config.js"), "utf8")).toBe(
-      '// Written by "brigade mod install"; run it again to change.\nexport const STATE_DIR = "/state/with \\"quotes\\"";\n',
+      '// Written by "brigade mod install"; run it again to change.\nexport const STATE_DIR = "/state/with \\"quotes\\"";\nexport const CONFIG_FILE = "/c/config.json";\n',
     );
   });
 });

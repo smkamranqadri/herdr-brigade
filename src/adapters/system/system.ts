@@ -5,4 +5,10 @@ const TASK_ID_BYTES = 3;
 
 export const systemClock: Clock = { now: () => new Date() };
 
-export const randomIds: Ids = { taskId: () => `task-${randomBytes(TASK_ID_BYTES).toString("hex")}` };
+const hex = () => randomBytes(TASK_ID_BYTES).toString("hex");
+
+export const randomIds: Ids = {
+  taskId: () => `task-${hex()}`,
+  noteId: () => `note-${hex()}`,
+  suggestionId: () => `sugg-${hex()}`,
+};

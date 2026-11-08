@@ -51,6 +51,36 @@ export function deriveTasks(events) {
   return [...tasks.values()];
 }
 
+/** A project's note count and open suggestions, folded as src/domain/notes.ts does (a test checks they agree). */
+export function noteCounts(events, project) {
+  const notes = new Set();
+  const open = new Set();
+  const settled = new Set();
+  for (const e of events) {
+    if (e.project !== project) continue;
+    if (e.kind === "note_added") notes.add(e.note);
+    if (e.kind === "note_removed") notes.delete(e.note);
+    if (e.kind === "note_suggested" && !settled.has(e.suggestion)) open.add(e.suggestion);
+    if (e.kind === "suggestion_resolved" && open.has(e.suggestion)) {
+      open.delete(e.suggestion);
+      settled.add(e.suggestion);
+      if (e.outcome === "accept" && e.note !== null) notes.add(e.note);
+    }
+  }
+  return { notes: notes.size, openSuggestions: open.size };
+}
+
+/** Project names from config.json's text, or none when it can't be read. */
+export function configProjects(text) {
+  try {
+    const projects = JSON.parse(text ?? "").projects;
+    return Array.isArray(projects) ? projects.map((p) => p.name).filter((n) => typeof n === "string") : [];
+  } catch {
+    // No config, or one being edited: the panel shows the projects it finds in the event log and terminals.
+    return [];
+  }
+}
+
 /** One line of text for an event in the panel's recent list. */
 export function eventText(e) {
   switch (e.kind) {
@@ -81,7 +111,7 @@ const agentRow = (t) => ({ address: t.address, status: t.status ?? null, harness
  * The panel's model. `terminals` is herdr's terminals() list; only those labelled brigade=main count.
  * A task waits on the owner when its worker asked something, or when its terminal is blocked on a prompt.
  */
-export function buildModel(terminals, events) {
+export function buildModel(terminals, events, configured = []) {
   const brigade = terminals.filter((t) => t.labels?.brigade === "main");
   const byTask = new Map(brigade.filter((t) => t.labels.task).map((t) => [t.labels.task, t]));
   const tasks = deriveTasks(events).map((task) => {
@@ -95,13 +125,18 @@ export function buildModel(terminals, events) {
     };
   });
   const captains = brigade.filter((t) => t.labels.role === "captain");
-  const names = [...new Set([...captains.map((c) => c.labels.project), ...tasks.map((t) => t.project)])];
+  const names = [...new Set([...configured, ...captains.map((c) => c.labels.project), ...tasks.map((t) => t.project)])];
   const coordinator = brigade.find((t) => t.labels.role === "coordinator");
   return {
     coordinator: coordinator ? agentRow(coordinator) : null,
     projects: names.map((name) => {
       const captain = captains.find((c) => c.labels.project === name);
-      return { name, captain: captain ? agentRow(captain) : null, tasks: tasks.filter((t) => t.project === name) };
+      return {
+        name,
+        captain: captain ? agentRow(captain) : null,
+        tasks: tasks.filter((t) => t.project === name),
+        notes: noteCounts(events, name),
+      };
     }),
     counts: {
       working: tasks.filter((t) => t.state === "working" && t.address !== null && !t.waiting).length,

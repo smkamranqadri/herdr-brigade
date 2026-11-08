@@ -1,5 +1,8 @@
 import type { AgentSpec, Role } from "./agent.ts";
 
+export type NoteSource = "owner" | "suggestion";
+export type SuggestionOutcome = "accept" | "merge" | "reject";
+
 /** One line of the brigade's event log. `at` is an ISO time from the injected clock. */
 export type BrigadeEvent =
   | {
@@ -33,6 +36,45 @@ export type BrigadeEvent =
       readonly github: string | null;
     }
   | { readonly at: string; readonly kind: "project_changed"; readonly project: string; readonly baseBranch: string }
+  | {
+      readonly at: string;
+      readonly kind: "note_added";
+      readonly note: string;
+      readonly project: string;
+      readonly text: string;
+      /** owner: the owner's words, relayed by the Coordinator or a Captain. */
+      readonly source: NoteSource;
+      readonly task: string | null;
+    }
+  | {
+      readonly at: string;
+      readonly kind: "note_changed";
+      readonly note: string;
+      readonly project: string;
+      readonly text: string;
+    }
+  | { readonly at: string; readonly kind: "note_removed"; readonly note: string; readonly project: string }
+  | {
+      readonly at: string;
+      readonly kind: "note_suggested";
+      readonly suggestion: string;
+      readonly project: string;
+      readonly task: string;
+      readonly text: string;
+      readonly why: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: "suggestion_resolved";
+      readonly suggestion: string;
+      readonly project: string;
+      readonly outcome: SuggestionOutcome;
+      readonly reason: string;
+      /** accept: the new note's id; merge: the note it changed; reject: null. */
+      readonly note: string | null;
+      /** The note's text after an accept or a merge; null for a reject. */
+      readonly text: string | null;
+    }
   | { readonly at: string; readonly kind: "task_finished"; readonly task: string; readonly summary: string }
   | { readonly at: string; readonly kind: "task_asked"; readonly task: string; readonly question: string }
   | {

@@ -2,7 +2,9 @@ import { isEffort, isHarness, type AgentContext, type AgentSpec } from "../domai
 import type { ProjectConfig } from "../domain/config.ts";
 import { BrigadeError } from "../domain/errors.ts";
 import type { NewEvent } from "../domain/events.ts";
+import { deriveNotes } from "../domain/notes.ts";
 import { branchFor, deriveTasks } from "../domain/tasks.ts";
+import { notesBlock } from "./notes.ts";
 import { projectNamed } from "./coordinator.ts";
 import { findTerminals, launchAgent, record, terminalName } from "./launch.ts";
 import type { Deps } from "./ports.ts";
@@ -47,6 +49,7 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
   const task = deps.ids.taskId();
   const branch = branchFor(task, input.title);
   const worktree = await deps.worktrees.create(project.repo, project.baseBranch, branch);
+  const notes = notesBlock(deriveNotes(await deps.events.read(), project.name).notes, deps.config.owner);
   const terminal = await launchAgent(
     deps,
     {
@@ -55,7 +58,7 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
       cwd: worktree,
       context: { role: "worker", project: project.name, task, title: input.title, parent: ctx.terminal },
       firstMessage: input.prompt,
-      promptValues: { PROJECT: project.name, TASK: task, TITLE: input.title, BRANCH: branch },
+      promptValues: { PROJECT: project.name, TASK: task, TITLE: input.title, BRANCH: branch, NOTES: notes },
       // A worktree's commits land in the main repo's .git folder, outside the worktree.
       writableDirs: [`${project.repo}/.git`],
     },

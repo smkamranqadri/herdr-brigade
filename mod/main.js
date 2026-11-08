@@ -3,8 +3,8 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { terminals, theme, run, readTextFile, watchFolder } from "herdr";
-import { STATE_DIR } from "./config.js";
-import { buildModel, parseEvents } from "./model.js";
+import { CONFIG_FILE, STATE_DIR } from "./config.js";
+import { buildModel, configProjects, parseEvents } from "./model.js";
 
 const EVENTS_FILE = `${STATE_DIR}/events.jsonl`;
 /** Used only while the state folder doesn't exist yet, so it can't be watched. */
@@ -15,6 +15,7 @@ const localTime = (iso) => new Date(iso).toTimeString().slice(0, 5);
 export default class Brigade extends View {
   init(_props, cx) {
     this.events = [];
+    this.projects = [];
     this.watch(cx);
   }
 
@@ -22,6 +23,7 @@ export default class Brigade extends View {
     cx.spawn(async (cx) => {
       for (;;) {
         this.events = parseEvents(await readTextFile(EVENTS_FILE));
+        this.projects = configProjects(await readTextFile(CONFIG_FILE));
         cx.notify();
         try {
           await watchFolder(STATE_DIR);
@@ -93,7 +95,7 @@ export default class Brigade extends View {
 
   render() {
     const t = theme();
-    const m = buildModel(terminals(), this.events);
+    const m = buildModel(terminals(), this.events, this.projects);
     const label = (text) => div().text_size(11).text_color(t.dim).child(text);
     return v_flex()
       .size_full()
@@ -132,7 +134,11 @@ export default class Brigade extends View {
         m.projects.map((p) =>
           v_flex()
             .gap(2)
-            .child(label(`PROJECT · ${p.name}`))
+            .child(
+              label(
+                `PROJECT · ${p.name} · ${p.notes.notes} notes${p.notes.openSuggestions ? ` · ${p.notes.openSuggestions} to settle` : ""}`,
+              ),
+            )
             .when(p.captain !== null, (el) => el.child(this.agentLine(`captain-${p.name}`, "Captain", p.captain, t)))
             .children(p.tasks.map((task) => this.taskLine(task, t))),
         ),

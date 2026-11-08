@@ -5,29 +5,9 @@ import type { Deps } from "../../application/ports.ts";
 import { askOwner, commitWork, finishTask, messageCaptain } from "../../application/worker.ts";
 import type { AgentContext, Role } from "../../domain/agent.ts";
 import { BrigadeError } from "../../domain/errors.ts";
+import { optStr, schema, str, type Args } from "./args.ts";
+import { captainNoteTools, coordinatorNoteTools, workerNoteTools } from "./noteTools.ts";
 import type { Tool } from "./protocol.ts";
-
-type Args = Readonly<Record<string, unknown>>;
-
-const MAX_TEXT = 20_000;
-
-/** Validates one string argument at the border (guide C7). */
-function str(args: Args, key: string): string {
-  const v = args[key];
-  if (typeof v !== "string" || v.trim() === "") throw new BrigadeError(`"${key}" is required and must be text.`);
-  if (v.length > MAX_TEXT) throw new BrigadeError(`"${key}" is longer than ${MAX_TEXT} characters.`);
-  return v;
-}
-
-function optStr(args: Args, key: string): string | undefined {
-  return args[key] === undefined ? undefined : str(args, key);
-}
-
-const schema = (required: readonly string[], props: Readonly<Record<string, string>>) => ({
-  type: "object",
-  properties: Object.fromEntries(Object.entries(props).map(([k, d]) => [k, { type: "string", description: d }])),
-  required,
-});
 
 function coordinatorTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
   return {
@@ -154,9 +134,13 @@ function workerTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
 }
 
 const BY_ROLE: Readonly<Record<Role, (deps: Deps, ctx: AgentContext) => Record<string, Tool>>> = {
-  coordinator: (deps, ctx) => ({ ...coordinatorTools(deps, ctx), ...projectTools(deps, ctx) }),
-  captain: captainTools,
-  worker: workerTools,
+  coordinator: (deps, ctx) => ({
+    ...coordinatorTools(deps, ctx),
+    ...projectTools(deps, ctx),
+    ...coordinatorNoteTools(deps, ctx),
+  }),
+  captain: (deps, ctx) => ({ ...captainTools(deps, ctx), ...captainNoteTools(deps, ctx) }),
+  worker: (deps, ctx) => ({ ...workerTools(deps, ctx), ...workerNoteTools(deps, ctx) }),
 };
 
 /** Refuses any argument the tool's schema doesn't name (guide C7): a tool never takes settings it doesn't offer. */

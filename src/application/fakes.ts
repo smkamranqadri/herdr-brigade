@@ -7,6 +7,7 @@ import type {
   CommitTarget,
   Deps,
   FoundRepo,
+  Ids,
   RepoFacts,
   HarnessLaunchRequest,
   LaunchContext,
@@ -153,11 +154,17 @@ export interface Fakes {
   readonly repos: FakeRepos;
 }
 
+/** Ids that count up across kinds: task-000001, note-000002, … */
+function countingIds(): Ids {
+  let n = 0;
+  return { taskId: () => `task-00000${++n}`, noteId: () => `note-00000${++n}`, suggestionId: () => `sugg-00000${++n}` };
+}
+
 /** The fake ports with no state of their own. */
 const FIXED = {
   prompts: {
     render: (role: string, values: Readonly<Record<string, string>>) =>
-      Promise.resolve(`${role} prompt for ${values.OWNER ?? "?"}`),
+      Promise.resolve(`${role} prompt for ${values.OWNER ?? "?"}${values.NOTES ? `\n${values.NOTES}` : ""}`),
   },
   clock: { now: () => new Date("2026-11-08T10:00:00.000Z") },
   coordinatorFolder: "/state/coordinator",
@@ -172,7 +179,6 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
   const mcpContexts: LaunchContext[] = [];
   const eventsAtTrust: number[] = [];
   terminals.onAnswerTrust = () => eventsAtTrust.push(events.events.length);
-  let ids = 0;
   const config = options.config ?? TEST_CONFIG;
   const configStore = new FakeConfigStore(config);
   const repos = new FakeRepos();
@@ -185,7 +191,7 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
     events,
     worktrees,
     ...FIXED,
-    ids: { taskId: () => `task-00000${++ids}` },
+    ids: countingIds(),
     mcpFor: (context) => {
       mcpContexts.push(context);
       return { command: "node", args: ["brigade", "mcp"], env: { ROLE: context.role } };

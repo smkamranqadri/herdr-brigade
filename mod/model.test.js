@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { deriveNotes } from "../src/domain/notes.ts";
 import { deriveTasks as domainDeriveTasks } from "../src/domain/tasks.ts";
-import { buildModel, deriveTasks, eventText, parseEvents } from "./model.js";
+import { buildModel, configProjects, deriveTasks, eventText, noteCounts, parseEvents } from "./model.js";
 
 const spec = { harness: "codex", model: "gpt-x", effort: "low", permissions: "auto" };
 const created = (task, title, terminal, at) => ({
@@ -100,7 +101,7 @@ describe("buildModel", () => {
   });
 
   it("is empty with no terminals and no events", () => {
-    expect(buildModel([], [])).toEqual({
+    expect(buildModel([], [], [])).toEqual({
       coordinator: null,
       projects: [],
       counts: { working: 0, waiting: 0, finished: 0 },
@@ -126,5 +127,51 @@ describe("eventText", () => {
     expect(
       eventText({ kind: "message_sent", from: "coordinator", to: "captain", project: "shop", text: "Fix it" }),
     ).toBe("coordinator → captain (shop): Fix it");
+  });
+});
+
+describe("notes in the panel", () => {
+  const NOTE_EVENTS = [
+    { at: "1", kind: "note_added", note: "n1", project: "shop", text: "a", source: "owner", task: null },
+    { at: "2", kind: "note_added", note: "n2", project: "shop", text: "b", source: "owner", task: null },
+    { at: "3", kind: "note_removed", note: "n2", project: "shop" },
+    { at: "4", kind: "note_suggested", suggestion: "s1", project: "shop", task: "t", text: "c", why: "w" },
+    { at: "5", kind: "note_suggested", suggestion: "s2", project: "shop", task: "t", text: "d", why: "w" },
+    {
+      at: "6",
+      kind: "suggestion_resolved",
+      suggestion: "s1",
+      project: "shop",
+      outcome: "accept",
+      reason: "r",
+      note: "n3",
+      text: "c",
+    },
+    {
+      at: "7",
+      kind: "suggestion_resolved",
+      suggestion: "s1",
+      project: "shop",
+      outcome: "accept",
+      reason: "r",
+      note: "n4",
+      text: "again",
+    },
+    { at: "8", kind: "note_added", note: "n9", project: "blog", text: "x", source: "owner", task: null },
+  ];
+
+  it("counts notes and open suggestions the same way brigade's own fold does", () => {
+    const domain = deriveNotes(NOTE_EVENTS, "shop");
+    expect(noteCounts(NOTE_EVENTS, "shop")).toEqual({
+      notes: domain.notes.length,
+      openSuggestions: domain.suggestions.filter((s) => s.outcome === null).length,
+    });
+    expect(noteCounts(NOTE_EVENTS, "shop")).toEqual({ notes: 2, openSuggestions: 1 });
+  });
+
+  it("shows a configured project with notes but no Captain or task", () => {
+    const m = buildModel([], NOTE_EVENTS, configProjects(JSON.stringify({ projects: [{ name: "blog" }] })));
+    expect(m.projects).toEqual([{ name: "blog", captain: null, tasks: [], notes: { notes: 1, openSuggestions: 0 } }]);
+    expect(configProjects("{ half-written")).toEqual([]);
   });
 });

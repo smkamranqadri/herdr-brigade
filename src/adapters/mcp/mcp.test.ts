@@ -133,18 +133,27 @@ describe("toolsFor", () => {
       "find_repo",
       "add_project",
       "update_project",
+      "save_note",
     ]);
     expect(Object.keys(toolsFor(deps, ctx({ role: "captain", project: "shop" })))).toEqual([
       "create_task",
       "send_to_task",
       "list_tasks",
       "report",
+      "list_notes",
+      "add_note",
+      "change_note",
+      "remove_note",
+      "list_suggestions",
+      "resolve_suggestion",
     ]);
     expect(Object.keys(toolsFor(deps, ctx({ role: "worker" })))).toEqual([
       "finish",
       "ask_user",
       "commit",
       "message_captain",
+      "suggest_note",
+      "read_notes",
     ]);
   });
 
@@ -178,6 +187,13 @@ describe("toolsFor", () => {
     const tools = toolsFor(f.deps, ctx({ role: "coordinator" }), () => Promise.resolve({ ...f.deps, config: added }));
     expect(await tools.list_projects?.run({})).toBe(
       "shop: /repos/shop (base branch main)\nblog: /repos/blog (base branch main)",
+    );
+  });
+
+  it("refuses an outcome other than accept, merge or reject", async () => {
+    const tools = toolsFor(fakeDeps().deps, ctx({ role: "captain", project: "shop" }));
+    await expect(tools.resolve_suggestion?.run({ suggestion: "s", outcome: "maybe", reason: "r" })).rejects.toThrow(
+      '"outcome" must be accept, merge or reject.',
     );
   });
 

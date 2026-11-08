@@ -76,7 +76,10 @@ async function panel(paths: Paths): Promise<string> {
 }
 
 async function modInstall(paths: Paths): Promise<string> {
-  const target = await installMod(paths.modSource, paths.herdrAppHome, paths.stateDir);
+  const target = await installMod(paths.modSource, paths.herdrAppHome, {
+    stateDir: paths.stateDir,
+    configFile: paths.configFile,
+  });
   const check = await herdrApp(paths).check(target);
   return `Installed the Brigade panel in ${target}.\n${check}`;
 }

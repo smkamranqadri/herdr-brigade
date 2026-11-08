@@ -148,6 +148,8 @@ export interface Clock {
 
 export interface Ids {
   taskId(): string;
+  noteId(): string;
+  suggestionId(): string;
 }
 
 /** What the launcher tells a new agent's MCP server about the agent. Its own terminal comes from hc. */

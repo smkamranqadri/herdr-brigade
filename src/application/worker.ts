@@ -2,6 +2,7 @@ import type { AgentContext } from "../domain/agent.ts";
 import { BrigadeError } from "../domain/errors.ts";
 import { deriveTasks } from "../domain/tasks.ts";
 import { record } from "./launch.ts";
+import { retroFor } from "./notes.ts";
 import type { Deps } from "./ports.ts";
 
 interface WorkerIdentity {
@@ -24,7 +25,8 @@ const label = (w: WorkerIdentity) => `[brigade] Task ${w.task} "${w.title}"`;
 export async function finishTask(deps: Deps, ctx: AgentContext, input: { summary: string }): Promise<string> {
   const w = identity(ctx);
   await record(deps, { kind: "task_finished", task: w.task, summary: input.summary });
-  await deps.terminals.send(w.captain, `${label(w)} finished: ${input.summary}`);
+  const retro = await retroFor(deps, w.project, w.task);
+  await deps.terminals.send(w.captain, `${label(w)} finished: ${input.summary}${retro ? `\n${retro}` : ""}`);
   return "Sent to your Captain. End your turn now.";
 }
 

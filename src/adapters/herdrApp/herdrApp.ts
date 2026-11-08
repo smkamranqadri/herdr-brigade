@@ -71,11 +71,20 @@ export class HerdrApp {
 }
 
 /** Copies the mod into herdr-app's mods folder and writes its config. Returns the folder. */
-export async function installMod(source: string, herdrAppHome: string, stateDir: string): Promise<string> {
+export async function installMod(
+  source: string,
+  herdrAppHome: string,
+  where: { stateDir: string; configFile: string },
+): Promise<string> {
   const target = path.join(herdrAppHome, "mods", MOD_NAME);
   await mkdir(target, { recursive: true });
   for (const file of MOD_FILES) await copyFile(path.join(source, file), path.join(target, file));
-  const config = `// Written by "brigade mod install"; run it again to change.\nexport const STATE_DIR = ${JSON.stringify(stateDir)};\n`;
+  const config = [
+    `// Written by "brigade mod install"; run it again to change.`,
+    `export const STATE_DIR = ${JSON.stringify(where.stateDir)};`,
+    `export const CONFIG_FILE = ${JSON.stringify(where.configFile)};`,
+    "",
+  ].join("\n");
   await writeFile(path.join(target, "config.js"), config);
   return target;
 }
