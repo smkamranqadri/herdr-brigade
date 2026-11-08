@@ -16,6 +16,12 @@ const SEND_WAIT_MS = 30_000;
 const SEND_RETRY_MS = 1_000;
 /** hc's refusal while a just-started program's output settles: "nothing was typed", so a retry is safe. */
 const STILL_STARTING = '"kind":"unavailable"';
+/** After sending to an idle agent, how long to wait for its turn to start before checking for a lost Enter. */
+const TURN_START_WAIT_MS = 20_000;
+const TURN_POLL_MS = 1_000;
+/** The input box is at the bottom of the screen, so the end of unsent text is in its last lines. */
+const INPUT_LINES = 12;
+const TEXT_PROBE_CHARS = 40;
 
 export function hcRunner(hcPath: string): HcRunner {
   return (args) =>
@@ -36,6 +42,7 @@ interface HcTerminalJson {
   address: string;
   name?: string;
   status?: string | { state?: string } | null;
+  turn?: unknown;
 }
 
 function statusWord(status: HcTerminalJson["status"]): string | null {
@@ -47,6 +54,14 @@ function statusWord(status: HcTerminalJson["status"]): string | null {
 export function trustKey(screen: string, trust: TrustPrompt): "enter" | "down" {
   const selected = screen.split("\n").find((line) => line.trimStart().startsWith(trust.cursor));
   return selected?.includes(trust.yes) ? "enter" : "down";
+}
+
+/** Whether the end of the text is in the screen's last lines. Spaces and line breaks are ignored, since the box wraps. */
+export function stillInInput(screen: string, text: string): boolean {
+  const squeeze = (s: string) => s.replace(/\s+/g, "");
+  const bottom = squeeze(screen.trimEnd().split("\n").slice(-INPUT_LINES).join(""));
+  const end = squeeze(text).slice(-TEXT_PROBE_CHARS);
+  return end.length > 0 && bottom.includes(end);
 }
 
 export interface HcTerminalsOptions {
@@ -103,7 +118,26 @@ export class HcTerminals implements Terminals {
     return "timeout";
   }
 
+  /**
+   * Types the text and presses Enter. A just-started agent's refusal ("still starting") is retried. An agent that was
+   * idle can take the text but drop the Enter (seen with pi), so its turn is watched, and Enter is pressed once more
+   * if the text is still in its input box. An agent already working gets no check: its message waits in its queue.
+   */
   async send(address: string, text: string): Promise<void> {
+    const before = await this.info(address);
+    await this.typeAndSend(address, text);
+    if (before.working) return;
+    const until = this.now() + TURN_START_WAIT_MS;
+    while (this.now() < until) {
+      const now = await this.info(address);
+      if (now.working || now.turn > before.turn) return;
+      await this.sleep(TURN_POLL_MS);
+    }
+    const screen = await this.run(["read", address, "--lines", "0"]);
+    if (stillInInput(screen, text)) await this.run(["keys", address, "enter"]);
+  }
+
+  private async typeAndSend(address: string, text: string): Promise<void> {
     const until = this.now() + SEND_WAIT_MS;
     for (;;) {
       try {
@@ -115,6 +149,12 @@ export class HcTerminals implements Terminals {
         await this.sleep(SEND_RETRY_MS);
       }
     }
+  }
+
+  /** The agent's turn number and whether it is working right now. */
+  private async info(address: string): Promise<{ turn: number; working: boolean }> {
+    const got = JSON.parse(await this.run(["get", address, "--json"])) as Pick<HcTerminalJson, "status" | "turn">;
+    return { turn: typeof got.turn === "number" ? got.turn : 0, working: statusWord(got.status) === "working" };
   }
 
   // `hc ls --json` leaves labels out of its output, so hc does the matching.

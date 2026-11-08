@@ -1,0 +1,22 @@
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+[brigade] Task t9 finished: probe only.
+line 1 of a long report about the readme change and its checks
+line 2 of a long report about the readme change and its checks
+line 3 of a long report about the readme change and its checks
+line 4 of a long report about the readme change and its checks
+line 5 of a long report about the readme change and its checks
+line 6 of a long report about the readme change and its checks
+line 7 of a long report about the readme change and its checks
+line 8 of a long report about the readme change and its checks
+line 9 of a long report about the readme change and its checks
+line 10 of a long report about the readme change and its checks
+line 11 of a long report about the readme change and its checks
+line 12 of a long report about the readme change and its checks
+line 13 of a long report about the readme change and its checks
+line 14 of a long report about the readme change and its checks
+Reply with the single word ok.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/demo-site
+$0.000 (sub) 0.0%/272k (auto)                                                                                                                                                 (openai) gpt-6.1-sol • low

@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { HcTerminals, trustKey } from "./hcTerminals.ts";
+import { HcTerminals, stillInInput, trustKey } from "./hcTerminals.ts";
 
 function scripted(replies: Record<string, string | string[]>) {
   const calls: string[][] = [];
@@ -174,25 +175,72 @@ describe("HcTerminals.find", () => {
 
 describe("HcTerminals.send", () => {
   const starting = 'ERR hc send failed: {"error":{"kind":"unavailable","message":"t3 is still starting"}}';
+  const working = JSON.stringify({ status: { app: "claude-code", state: "working" }, turn: 4 });
+  const idle = (turn: number) => JSON.stringify({ status: { app: "pi", state: "idle" }, turn });
 
-  it("passes the text as one argument", async () => {
-    const { terminals, calls } = scripted({});
+  it("passes the text as one argument, and checks nothing more when the agent is working", async () => {
+    const { terminals, calls } = scripted({ get: working });
     await terminals.send("t3", "[brigade] hello; rm -rf /");
-    expect(calls).toEqual([["send", "t3", "[brigade] hello; rm -rf /"]]);
+    expect(calls).toEqual([
+      ["get", "t3", "--json"],
+      ["send", "t3", "[brigade] hello; rm -rf /"],
+    ]);
   });
 
   it("retries while hc says the agent is still starting", async () => {
-    const { terminals, calls } = scripted({ send: [starting, starting, ""] });
+    const { terminals, calls } = scripted({ get: working, send: [starting, starting, ""] });
     await terminals.send("t3", "hi");
-    expect(calls).toHaveLength(3);
+    expect(calls.filter((c) => c[0] === "send")).toHaveLength(3);
   });
 
   it("fails at once on any other error, and after 30 seconds of still starting", async () => {
-    await expect(scripted({ send: "ERR hc send failed: not_found" }).terminals.send("t3", "hi")).rejects.toThrow(
-      "not_found",
-    );
-    const slow = scripted({ send: starting });
+    const lost = scripted({ get: working, send: "ERR hc send failed: not_found" });
+    await expect(lost.terminals.send("t3", "hi")).rejects.toThrow("not_found");
+    const slow = scripted({ get: working, send: starting });
     await expect(slow.terminals.send("t3", "hi")).rejects.toThrow("still starting");
-    expect(slow.calls).toHaveLength(31);
+    expect(slow.calls.filter((c) => c[0] === "send")).toHaveLength(31);
+  });
+
+  it("stops watching an idle agent once its turn starts or it is working", async () => {
+    for (const after of [idle(3), JSON.stringify({ status: "working", turn: 2 })]) {
+      const { terminals, calls } = scripted({ get: [idle(2), idle(2), after] });
+      await terminals.send("t3", "hi");
+      expect(calls.map((c) => c[0])).toEqual(["get", "send", "get", "get"]);
+    }
+  });
+
+  // pi 1.5.0 kept this 16-line message in its input after the Enter was lost; one more Enter sent it.
+  const piScreen = readFileSync(new URL("fixtures/pi-unsent-input.txt", import.meta.url), "utf8");
+  const piText = piScreen.slice(piScreen.indexOf("[brigade]"), piScreen.indexOf("ok.") + 3);
+
+  it("presses Enter once when no turn starts in 20 seconds and the text is still in the input", async () => {
+    const { terminals, calls } = scripted({ get: idle(0), read: piScreen });
+    await terminals.send("t5", piText);
+    expect(calls.filter((c) => c[0] === "get")).toHaveLength(21);
+    expect(calls.slice(-2)).toEqual([
+      ["read", "t5", "--lines", "0"],
+      ["keys", "t5", "enter"],
+    ]);
+  });
+
+  it("presses nothing when the input holds other text", async () => {
+    const { terminals, calls } = scripted({ get: idle(0), read: piScreen });
+    await terminals.send("t5", "[brigade] From the Coordinator: add a footer.");
+    expect(calls.at(-1)).toEqual(["read", "t5", "--lines", "0"]);
+  });
+});
+
+describe("stillInInput", () => {
+  const piScreen = readFileSync(new URL("fixtures/pi-unsent-input.txt", import.meta.url), "utf8");
+
+  it("finds the end of the text across wrapped lines, only near the bottom", () => {
+    expect(
+      stillInInput(
+        piScreen,
+        "line 14 of a long report about the readme change and its checks Reply with the single word ok.",
+      ),
+    ).toBe(true);
+    expect(stillInInput(piScreen, "[brigade] Task t9 finished: probe only.")).toBe(false);
+    expect(stillInInput(piScreen, "  ")).toBe(false);
   });
 });
