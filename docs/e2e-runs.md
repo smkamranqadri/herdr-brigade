@@ -144,3 +144,11 @@ Then, with the real adapters and no agents:
 - **Refusal:** `create_pull_request` for that task refused: "PR #1 … is closed. Its branch is finished: the work needs a new task." The branch stayed deleted on GitHub.
 
 Cleanup: PRs #1–#3 are closed with a comment, and their branches are deleted. The repo has no open PRs.
+
+## 2026-11-09: phase 2 step 4, phase 1 gaps
+
+- **pi's lost Enter, reproduced by hand.** A 16-line message pasted into pi 1.5.0 right after it started stayed in its input box: status idle, turn 0. One more Enter sent it, and pi ran turn 1. `HcTerminals.send` now does this itself: after a send to an idle agent, it waits up to 20 seconds for a turn, then presses Enter once if the end of the text is in the screen's last 12 lines. That screen is the test fixture (`src/adapters/hc/fixtures/pi-unsent-input.txt`).
+- **Each worktree check matters on its own.** Three new tests each trip exactly one check: a subfolder (top folder), a forged git folder in `.git/worktrees` (repo), and the repo's own git folder on the task's branch (git folder). Removing any check fails its own test.
+- **The e2e timeout path.** `WAIT_SECONDS=45 scripts/e2e.sh claude "Reply here with the single word hello. Do not create a task and do not contact any Captain."` The Coordinator replied "hello" and created no task. The script printed "timed out after 45s: the tasks did not all finish and get reported" and exited 1.
+- **Not checked yet:** auto-focus on `brigade start`, by eye, at a time the owner chooses.
+
