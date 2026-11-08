@@ -1,4 +1,5 @@
 import type { AgentSpec } from "../domain/agent.ts";
+import { BrigadeError } from "../domain/errors.ts";
 import type { NewEvent } from "../domain/events.ts";
 import type { Deps, LaunchContext, TerminalInfo } from "./ports.ts";
 
@@ -21,8 +22,12 @@ export interface AgentLaunch {
   readonly promptValues: Readonly<Record<string, string>>;
 }
 
-/** Starts one agent in a new hc terminal, answers its trust prompt, and returns its address. */
-export async function launchAgent(deps: Deps, a: AgentLaunch): Promise<string> {
+/**
+ * Starts one agent in a new hc terminal and returns its address. `started` names the event to record: it is
+ * recorded as soon as the terminal exists, before the agent can act, so no report from it can come first.
+ * Then the trust prompt is answered; if the agent shows neither the prompt nor its ready screen in time, it fails.
+ */
+export async function launchAgent(deps: Deps, a: AgentLaunch, started: (address: string) => NewEvent): Promise<string> {
   const { role, project, task, title, parent } = a.context;
   const systemPrompt = await deps.prompts.render(role, { OWNER: deps.config.owner, ...a.promptValues });
   const plan = await deps.harnesses.prepare({
@@ -38,7 +43,12 @@ export async function launchAgent(deps: Deps, a: AgentLaunch): Promise<string> {
   if (task) labels.task = task;
   if (title) labels.title = title;
   const address = await deps.terminals.launch({ name: a.name, cwd: a.cwd, labels, parent, argv: plan.argv });
-  if (plan.trust) await deps.terminals.answerTrust(address, plan.trust);
+  await record(deps, started(address));
+  if (plan.trust && (await deps.terminals.answerTrust(address, plan.trust)) === "timeout") {
+    throw new BrigadeError(
+      `The ${role} in terminal ${address} started but never became ready. It may be stuck on a prompt: check it with "hc read ${address}".`,
+    );
+  }
   return address;
 }
 

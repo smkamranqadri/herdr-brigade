@@ -5,6 +5,7 @@ import { userInfo } from "node:os";
 import path from "node:path";
 import { listTasks, startCoordinator } from "../application/coordinator.ts";
 import { findTerminals } from "../application/launch.ts";
+import { errorCode } from "../domain/errors.ts";
 import { serve } from "../adapters/mcp/protocol.ts";
 import { toolsFor } from "../adapters/mcp/tools.ts";
 import { buildDeps, ConfigProblem, loadConfig } from "./bootstrap.ts";
@@ -30,7 +31,7 @@ async function init(paths: Paths): Promise<string> {
   try {
     await writeFile(paths.configFile, JSON.stringify(STARTER(userInfo().username), null, 2) + "\n", { flag: "wx" });
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "EEXIST") return `${paths.configFile} already exists; left as it is.`;
+    if (errorCode(err) === "EEXIST") return `${paths.configFile} already exists; left as it is.`;
     throw err;
   }
   return `Wrote ${paths.configFile}. Add your projects to it, then run "brigade start".`;

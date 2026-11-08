@@ -9,6 +9,7 @@ import { HcTerminals, hcRunner } from "../adapters/hc/hcTerminals.ts";
 import { FilePrompts } from "../adapters/prompts/filePrompts.ts";
 import { randomIds, systemClock } from "../adapters/system/system.ts";
 import { parseConfig, type BrigadeConfig } from "../domain/config.ts";
+import { errorCode } from "../domain/errors.ts";
 import { mcpEnv, type Paths } from "./settings.ts";
 
 export class ConfigProblem extends Error {
@@ -20,7 +21,7 @@ export async function loadConfig(file: string): Promise<BrigadeConfig> {
   try {
     raw = JSON.parse(await readFile(file, "utf8"));
   } catch (err) {
-    const missing = (err as NodeJS.ErrnoException).code === "ENOENT";
+    const missing = errorCode(err) === "ENOENT";
     throw new ConfigProblem(
       missing ? `No config at ${file}. Run "brigade init" first.` : `Can't read ${file}: ${String(err)}`,
     );

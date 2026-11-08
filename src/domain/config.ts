@@ -68,8 +68,8 @@ function parseRoles(raw: unknown, errors: string[]): Record<Role, AgentSpec> | n
     errors.push("roles must have coordinator, captain and worker");
     return null;
   }
-  const specs = ROLE_KEYS.map((role) => [role, parseSpec(raw[role], role, errors)] as const);
-  return specs.every(([, spec]) => spec !== null) ? (Object.fromEntries(specs) as Record<Role, AgentSpec>) : null;
+  const [coordinator, captain, worker] = ROLE_KEYS.map((role) => parseSpec(raw[role], role, errors));
+  return coordinator && captain && worker ? { coordinator, captain, worker } : null;
 }
 
 /** Checks a config file's parsed JSON. Lists every problem, not only the first. */

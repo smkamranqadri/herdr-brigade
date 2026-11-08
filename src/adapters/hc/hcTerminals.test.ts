@@ -83,19 +83,19 @@ describe("HcTerminals.launch", () => {
 describe("HcTerminals.answerTrust", () => {
   it("presses the answer keys once the prompt shows", async () => {
     const { terminals, calls } = scripted({ read: ["booting", "Quick safety check: Yes, I trust this folder"] });
-    expect(await terminals.answerTrust("t7", claudeTrust)).toBe(true);
+    expect(await terminals.answerTrust("t7", claudeTrust)).toBe("answered");
     expect(calls.filter((c) => c[0] === "keys")).toEqual([["keys", "t7", "down", "enter"]]);
   });
 
   it("stops without pressing anything once the agent is ready", async () => {
     const { terminals, calls } = scripted({ read: "› ? for shortcuts" });
-    expect(await terminals.answerTrust("t7", claudeTrust)).toBe(false);
+    expect(await terminals.answerTrust("t7", claudeTrust)).toBe("ready");
     expect(calls.filter((c) => c[0] === "keys")).toEqual([]);
   });
 
   it("gives up after 30 seconds", async () => {
     const { terminals, calls } = scripted({ read: "booting" });
-    expect(await terminals.answerTrust("t7", claudeTrust)).toBe(false);
+    expect(await terminals.answerTrust("t7", claudeTrust)).toBe("timeout");
     expect(calls.filter((c) => c[0] === "read")).toHaveLength(60);
   });
 });

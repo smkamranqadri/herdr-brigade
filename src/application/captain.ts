@@ -37,24 +37,27 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
   const task = deps.ids.taskId();
   const branch = branchFor(task, input.title);
   const worktree = await deps.worktrees.create(project.repo, project.baseBranch, branch);
-  const terminal = await launchAgent(deps, {
-    spec,
-    name: terminalName.worker(task),
-    cwd: worktree,
-    context: { role: "worker", project: project.name, task, title: input.title, parent: ctx.terminal },
-    firstMessage: input.prompt,
-    promptValues: { PROJECT: project.name, TASK: task, TITLE: input.title, BRANCH: branch },
-  });
-  await record(deps, {
-    kind: "task_created",
-    project: project.name,
-    task,
-    title: input.title,
-    branch,
-    worktree,
-    terminal,
-    spec,
-  });
+  const terminal = await launchAgent(
+    deps,
+    {
+      spec,
+      name: terminalName.worker(task),
+      cwd: worktree,
+      context: { role: "worker", project: project.name, task, title: input.title, parent: ctx.terminal },
+      firstMessage: input.prompt,
+      promptValues: { PROJECT: project.name, TASK: task, TITLE: input.title, BRANCH: branch },
+    },
+    (terminal) => ({
+      kind: "task_created",
+      project: project.name,
+      task,
+      title: input.title,
+      branch,
+      worktree,
+      terminal,
+      spec,
+    }),
+  );
   return `Started ${task} "${input.title}" on ${spec.harness} (${spec.model}) in terminal ${terminal}, branch ${branch}. End your turn; its report arrives as a [brigade] message.`;
 }
 

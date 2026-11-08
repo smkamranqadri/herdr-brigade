@@ -30,6 +30,21 @@ describe("JsonlEventLog", () => {
   });
 });
 
+describe("JsonlEventLog after a crash", () => {
+  it("starts a new line after a fragment, so later events stay readable, and reports the damaged line", async () => {
+    const file = path.join(await temp("log"), "events.jsonl");
+    const bad: number[] = [];
+    const log = new JsonlEventLog(file, (n) => bad.push(n));
+    const asked = { at: "t", kind: "task_asked", task: "task-1", question: "q" } as const;
+    await log.append(asked);
+    await appendFile(file, '{"at":"t","kind":"task_fin');
+    const finished = { at: "u", kind: "task_finished", task: "task-1", summary: "ok" } as const;
+    await log.append(finished);
+    expect(await log.read()).toEqual([asked, finished]);
+    expect(bad).toEqual([2]);
+  });
+});
+
 describe("GitWorktrees", () => {
   it("adds a worktree on a new branch from the base branch", async () => {
     const repo = path.join(await temp("repo"), "shop");

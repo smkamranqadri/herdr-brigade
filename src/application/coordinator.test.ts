@@ -43,6 +43,7 @@ describe("startCoordinator", () => {
     const f = fakeDeps({ trust: { text: "trust", keys: ["enter"], ready: [] } });
     await startCoordinator(f.deps);
     expect(f.terminals.trustAnswered).toEqual(["t1"]);
+    expect(f.eventsAtTrust).toEqual([1]);
   });
 });
 

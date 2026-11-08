@@ -30,11 +30,13 @@ export interface TrustPrompt {
   readonly ready: readonly string[];
 }
 
+export type TrustOutcome = "answered" | "ready" | "timeout";
+
 /** Port to herdr-core (hc). */
 export interface Terminals {
   launch(req: TerminalLaunch): Promise<string>;
-  /** Answers the trust prompt if it appears. Returns whether it did. */
-  answerTrust(address: string, trust: TrustPrompt): Promise<boolean>;
+  /** Answers the trust prompt if it appears, or sees the agent ready without one, or gives up. */
+  answerTrust(address: string, trust: TrustPrompt): Promise<TrustOutcome>;
   send(address: string, text: string): Promise<void>;
   /** Live terminals that carry all of these labels. */
   find(labels: Readonly<Record<string, string>>): Promise<TerminalInfo[]>;

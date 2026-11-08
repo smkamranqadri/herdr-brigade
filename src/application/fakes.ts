@@ -2,7 +2,15 @@
 import type { AgentContext } from "../domain/agent.ts";
 import type { BrigadeConfig } from "../domain/config.ts";
 import type { BrigadeEvent } from "../domain/events.ts";
-import type { Deps, HarnessLaunchRequest, LaunchContext, TerminalInfo, TerminalLaunch, TrustPrompt } from "./ports.ts";
+import type {
+  Deps,
+  HarnessLaunchRequest,
+  LaunchContext,
+  TerminalInfo,
+  TerminalLaunch,
+  TrustOutcome,
+  TrustPrompt,
+} from "./ports.ts";
 
 const TEST_CONFIG: BrigadeConfig = {
   owner: "Sam",
@@ -27,9 +35,14 @@ class FakeTerminals {
     this.live.push({ address, name: req.name, labels: req.labels, status: "working" });
     return Promise.resolve(address);
   }
-  answerTrust(address: string): Promise<boolean> {
+  /** What answerTrust reports, and a hook that runs when it is called. */
+  trustOutcome: TrustOutcome = "answered";
+  onAnswerTrust: () => void = () => undefined;
+
+  answerTrust(address: string): Promise<TrustOutcome> {
+    this.onAnswerTrust();
     this.trustAnswered.push(address);
-    return Promise.resolve(true);
+    return Promise.resolve(this.trustOutcome);
   }
   send(address: string, text: string): Promise<void> {
     this.sent.push({ address, text });
@@ -79,6 +92,8 @@ export interface Fakes {
   readonly events: FakeEventLog;
   readonly worktrees: FakeWorktrees;
   readonly mcpContexts: LaunchContext[];
+  /** How many events the log held each time a trust prompt was answered. */
+  readonly eventsAtTrust: number[];
 }
 
 export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig } = {}): Fakes {
@@ -87,6 +102,8 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
   const events = new FakeEventLog();
   const worktrees = new FakeWorktrees();
   const mcpContexts: LaunchContext[] = [];
+  const eventsAtTrust: number[] = [];
+  terminals.onAnswerTrust = () => eventsAtTrust.push(events.events.length);
   let ids = 0;
   const deps: Deps = {
     config: options.config ?? TEST_CONFIG,
@@ -103,7 +120,7 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
     },
     coordinatorFolder: "/state/coordinator",
   };
-  return { deps, terminals, harnesses, events, worktrees, mcpContexts };
+  return { deps, terminals, harnesses, events, worktrees, mcpContexts, eventsAtTrust };
 }
 
 export const ctx = (over: Partial<AgentContext> & Pick<AgentContext, "role">): AgentContext => ({

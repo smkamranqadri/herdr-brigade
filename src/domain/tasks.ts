@@ -18,13 +18,32 @@ export interface TaskView {
   readonly updatedAt: string;
 }
 
+/** The task an event is about, if any. */
+function taskOf(e: BrigadeEvent): string | null {
+  return e.kind === "agent_started" ? null : e.task;
+}
+
+/** One event applied to a task. A follow-up to the worker means it is working again. */
+function applyEvent(current: TaskView, e: BrigadeEvent): TaskView {
+  switch (e.kind) {
+    case "task_finished":
+      return { ...current, state: "finished", note: e.summary, updatedAt: e.at };
+    case "task_asked":
+      return { ...current, state: "asking", note: e.question, updatedAt: e.at };
+    case "message_sent":
+      return e.to === "worker" ? { ...current, state: "working", updatedAt: e.at } : current;
+    default:
+      return current;
+  }
+}
+
 /** Folds the event log into one view per task, in the order the tasks were created. */
 export function deriveTasks(events: readonly BrigadeEvent[]): TaskView[] {
   const tasks = new Map<string, TaskView>();
   for (const e of events) {
     if (e.kind === "task_created") {
       const { project, task, title, branch, worktree, terminal, spec, at } = e;
-      tasks.set(task, {
+      const view: TaskView = {
         id: task,
         project,
         title,
@@ -35,14 +54,13 @@ export function deriveTasks(events: readonly BrigadeEvent[]): TaskView[] {
         state: "working",
         note: null,
         updatedAt: at,
-      });
+      };
+      tasks.set(task, view);
       continue;
     }
-    const current = e.kind === "task_finished" || e.kind === "task_asked" ? tasks.get(e.task) : undefined;
-    if (!current) continue;
-    if (e.kind === "task_finished")
-      tasks.set(e.task, { ...current, state: "finished", note: e.summary, updatedAt: e.at });
-    if (e.kind === "task_asked") tasks.set(e.task, { ...current, state: "asking", note: e.question, updatedAt: e.at });
+    const id = taskOf(e);
+    const current = id === null ? undefined : tasks.get(id);
+    if (id !== null && current) tasks.set(id, applyEvent(current, e));
   }
   return [...tasks.values()];
 }

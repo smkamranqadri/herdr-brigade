@@ -79,11 +79,47 @@ describe("serve", () => {
     const lines = String(output.read())
       .trim()
       .split("\n")
-      .map((l) => JSON.parse(l) as unknown);
+      .map((l): unknown => JSON.parse(l));
     expect(lines).toEqual([
       { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } },
       { jsonrpc: "2.0", id: 1, result: {} },
     ]);
+  });
+});
+
+describe("serve with bad input", () => {
+  it("answers a non-request with Invalid Request and an internal failure with Internal error, then keeps serving", async () => {
+    const broken: Record<string, Tool> = {
+      odd: {
+        get description(): string {
+          throw new Error("broken tool table");
+        },
+        inputSchema: {},
+        run: () => Promise.resolve(""),
+      },
+    };
+    const input = new PassThrough();
+    const output = new PassThrough();
+    const seen: unknown[] = [];
+    const done = serve(broken, input, output, (e) => seen.push(e));
+    input.end('null\n[1]\n{"jsonrpc":"2.0","id":7,"method":"tools/list"}\n{"jsonrpc":"2.0","id":8,"method":"ping"}\n');
+    await done;
+    await new Promise((r) => setImmediate(r));
+    const lines = String(output.read())
+      .trim()
+      .split("\n")
+      .map((l): unknown => JSON.parse(l));
+    // JSON-RPC replies may arrive in any order: check the exact set.
+    expect(lines).toHaveLength(4);
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request" } },
+        { jsonrpc: "2.0", id: 8, result: {} },
+        { jsonrpc: "2.0", id: 7, error: { code: -32603, message: "Internal error" } },
+      ]),
+    );
+    expect(lines.filter((l) => JSON.stringify(l).includes("-32600"))).toHaveLength(2);
+    expect(seen).toHaveLength(3);
   });
 });
 

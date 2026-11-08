@@ -38,7 +38,7 @@ export interface AgentContext {
 }
 
 function isOneOf<T extends string>(list: readonly T[], value: unknown): value is T {
-  return typeof value === "string" && (list as readonly string[]).includes(value);
+  return typeof value === "string" && list.some((item) => item === value);
 }
 
 export const isHarness = (value: unknown): value is Harness => isOneOf(HARNESSES, value);

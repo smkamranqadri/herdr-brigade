@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "./config.ts";
+import { errorCode } from "./errors.ts";
 import { branchFor, deriveTasks } from "./tasks.ts";
 
 const roles = {
@@ -118,6 +119,29 @@ describe("deriveTasks", () => {
     ]);
   });
 
+  it("puts a task back to working when its worker gets a follow-up, but not for a report upward", () => {
+    const followUp = (to: "worker" | "coordinator", at: string) =>
+      ({
+        kind: "message_sent",
+        from: "captain",
+        to,
+        project: "shop",
+        task: to === "worker" ? "task-1" : null,
+        text: "x",
+        at,
+      }) as const;
+    const asked = { kind: "task_asked", task: "task-1", question: "Which?", at: "2" } as const;
+    expect(deriveTasks([{ ...created, at: "1" }, asked, followUp("worker", "3")])[0]).toMatchObject({
+      state: "working",
+      updatedAt: "3",
+    });
+    const finished = { kind: "task_finished", task: "task-1", summary: "Done", at: "2" } as const;
+    expect(deriveTasks([{ ...created, at: "1" }, finished, followUp("coordinator", "3")])[0]).toMatchObject({
+      state: "finished",
+      updatedAt: "2",
+    });
+  });
+
   it("ignores events for unknown tasks and unrelated events", () => {
     expect(
       deriveTasks([
@@ -125,5 +149,15 @@ describe("deriveTasks", () => {
         { kind: "agent_started", role: "coordinator", project: null, terminal: "t1", spec, at: "2" },
       ]),
     ).toEqual([]);
+  });
+});
+
+describe("errorCode", () => {
+  it("reads a string code and ignores everything else", () => {
+    expect(errorCode(Object.assign(new Error("x"), { code: "ENOENT" }))).toBe("ENOENT");
+    expect(errorCode({ code: 2 })).toBeUndefined();
+    expect(errorCode(new Error("x"))).toBeUndefined();
+    expect(errorCode("ENOENT")).toBeUndefined();
+    expect(errorCode(null)).toBeUndefined();
   });
 });

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import type { TerminalInfo, TerminalLaunch, Terminals, TrustPrompt } from "../../application/ports.ts";
+import type { TerminalInfo, TerminalLaunch, Terminals, TrustOutcome, TrustPrompt } from "../../application/ports.ts";
 
 /** Runs hc with these arguments and returns what it printed. */
 export type HcRunner = (args: readonly string[]) => Promise<string>;
@@ -64,18 +64,18 @@ export class HcTerminals implements Terminals {
     return out.address;
   }
 
-  async answerTrust(address: string, trust: TrustPrompt): Promise<boolean> {
+  async answerTrust(address: string, trust: TrustPrompt): Promise<TrustOutcome> {
     const until = this.now() + TRUST_WAIT_MS;
     while (this.now() < until) {
       const screen = await this.run(["read", address, "--lines", "0"]);
       if (screen.includes(trust.text)) {
         await this.run(["keys", address, ...trust.keys]);
-        return true;
+        return "answered";
       }
-      if (trust.ready.some((r) => screen.includes(r))) return false;
+      if (trust.ready.some((r) => screen.includes(r))) return "ready";
       await this.sleep(TRUST_POLL_MS);
     }
-    return false;
+    return "timeout";
   }
 
   async send(address: string, text: string): Promise<void> {

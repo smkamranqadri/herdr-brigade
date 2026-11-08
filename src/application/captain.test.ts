@@ -40,6 +40,22 @@ describe("createTask", () => {
     );
   });
 
+  it("records the task before answering the worker's trust prompt, so no report can come first", async () => {
+    const f = fakeDeps({ trust: { text: "trust", keys: ["enter"], ready: [] } });
+    await createTask(f.deps, captain, { title: "Login", prompt: "p" });
+    expect(f.eventsAtTrust).toEqual([1]);
+    expect(f.events.events[0]?.kind).toBe("task_created");
+  });
+
+  it("fails with the terminal's address when the worker never becomes ready, and keeps the task on record", async () => {
+    const f = fakeDeps({ trust: { text: "trust", keys: ["enter"], ready: [] } });
+    f.terminals.trustOutcome = "timeout";
+    await expect(createTask(f.deps, captain, { title: "Login", prompt: "p" })).rejects.toThrow(
+      'The worker in terminal t1 started but never became ready. It may be stuck on a prompt: check it with "hc read t1".',
+    );
+    expect(f.events.events.map((e) => e.kind)).toEqual(["task_created"]);
+  });
+
   it("refuses an agent with no project", async () => {
     const f = fakeDeps();
     await expect(createTask(f.deps, ctx({ role: "worker" }), { title: "x", prompt: "y" })).rejects.toThrow(

@@ -17,15 +17,18 @@ export async function startCoordinator(deps: Deps): Promise<{ address: string; s
   const [running] = await findTerminals(deps, { role: "coordinator" });
   if (running) return { address: running.address, started: false };
   const spec = deps.config.roles.coordinator;
-  const address = await launchAgent(deps, {
-    spec,
-    name: terminalName.coordinator(),
-    cwd: deps.coordinatorFolder,
-    context: { role: "coordinator", project: null, task: null, title: null, parent: null },
-    firstMessage: null,
-    promptValues: { PROJECTS: deps.config.projects.map((p) => p.name).join(", ") || "none yet" },
-  });
-  await record(deps, { kind: "agent_started", role: "coordinator", project: null, terminal: address, spec });
+  const address = await launchAgent(
+    deps,
+    {
+      spec,
+      name: terminalName.coordinator(),
+      cwd: deps.coordinatorFolder,
+      context: { role: "coordinator", project: null, task: null, title: null, parent: null },
+      firstMessage: null,
+      promptValues: { PROJECTS: deps.config.projects.map((p) => p.name).join(", ") || "none yet" },
+    },
+    (terminal) => ({ kind: "agent_started", role: "coordinator", project: null, terminal, spec }),
+  );
   return { address, started: true };
 }
 
@@ -37,15 +40,18 @@ async function startCaptain(
   firstMessage: string,
 ): Promise<void> {
   const spec = deps.config.roles.captain;
-  const address = await launchAgent(deps, {
-    spec,
-    name: terminalName.captain(project.name),
-    cwd: project.repo,
-    context: { role: "captain", project: project.name, task: null, title: null, parent: ctx.terminal },
-    firstMessage,
-    promptValues: { PROJECT: project.name, REPO: project.repo, BASE_BRANCH: project.baseBranch },
-  });
-  await record(deps, { kind: "agent_started", role: "captain", project: project.name, terminal: address, spec });
+  await launchAgent(
+    deps,
+    {
+      spec,
+      name: terminalName.captain(project.name),
+      cwd: project.repo,
+      context: { role: "captain", project: project.name, task: null, title: null, parent: ctx.terminal },
+      firstMessage,
+      promptValues: { PROJECT: project.name, REPO: project.repo, BASE_BRANCH: project.baseBranch },
+    },
+    (terminal) => ({ kind: "agent_started", role: "captain", project: project.name, terminal, spec }),
+  );
 }
 
 /** Sends work to a project's Captain, starting the Captain first if it isn't running. */
