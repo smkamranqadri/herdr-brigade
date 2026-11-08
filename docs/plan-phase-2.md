@@ -1,32 +1,32 @@
 # Phase 2 plan
 
-Status: revised after the plan review (`docs/reviews.md`), waiting for the owner's decisions and approval. Date: 2026-11-09.
+Status: revised after the plan review (`docs/reviews.md`); the owner's four decisions are in. Waiting for approval to start. Date: 2026-11-09.
 
 ## Goal
 
-The owner runs a real project with brigade from chat. They add the project by voice, give lasting rules once, and get pull requests back where they allow them.
+The owner runs a real project with brigade from chat. They add the project by voice, give lasting rules once, and get pull requests back, as in Box Yard.
 
 Done means:
 
 - A dictated "add a project" request adds it.
-- Every active note reaches every later worker in that project. None is dropped silently.
-- In a project where the owner allows publishing, a worker on each harness opens a pull request in the right GitHub repo, and brigade reports its live state.
-- Nothing an agent says can grant itself more power: publishing rights live in config only the owner changes.
+- Every later worker in that project starts with its notes, newest first within the budget, and can read the rest.
+- In a project whose `origin` is on GitHub, a worker on each harness opens a pull request in that pinned repo, and brigade reports its live state.
+- Nothing an agent says can widen its reach: each project's GitHub repo is pinned when the project is added, and only the owner can change it.
 - The gate, the proof matrix below, a fresh code review and a real-agent run on each harness all pass.
 
 ## Principle: power is enforced in code, not in prompts
 
-Agents can be wrong, and text in a repo can try to steer them. So every capability with outside effect is checked by brigade's own code against settings the owner controls. Prompts explain the rules; they never are the rule. This applies to config writes, notes and publishing below.
+Agents can be wrong, and text in a repo can try to steer them. So every capability with outside effect is checked by brigade's own code against settings the owner controls. Prompts explain the rules; they never are the rule. This applies to config writes, notes and the pinned GitHub repo below.
 
 ## Part 1: Projects from chat
 
 - **Coordinator tools:**
   - `find_repo(name)`: read-only. Searches the owner's repo folders (config `repoRoots`, default `~/Repositories`) for git repos whose folder name matches. Limits: 3 levels deep, at most 2,000 folders visited, at most 20 results, 10 seconds.
-  - `add_project(name, repo, baseBranch?)`: checks the folder is a git repo, the base branch exists (default: the repo's current branch), and the name is valid and unused. A new project always starts with `publish: "never"`.
+  - `add_project(name, repo, baseBranch?)`: checks the folder is a git repo, the base branch exists (default: the repo's current branch), and the name is valid and unused. If `origin` is on github.com, it pins that repo as the project's `github` setting.
   - `update_project(name, baseBranch)`: changes the base branch for new tasks.
-- **Who may change what:** agent tools may only add projects and change a project's base branch. `owner`, `roles`, `repoRoots` and each project's `publish` and `github` settings change only by hand or by the owner's own `brigade project` command (Part 3). The tools reject any other change.
+- **Who may change what:** agent tools may only add projects and change a project's base branch. `owner`, `roles`, `repoRoots` and each project's pinned `github` repo change only by hand. The tools reject any other change.
 - **Config writes are serialized across processes.** Each write takes a lock file next to the config (`config.json.lock`, created exclusively, with the writer's pid and time). The lock is held through read, validate, write to a temp file, and rename. Waiting is bounded at 5 seconds. A lock older than 30 seconds whose pid is gone is taken over. A test runs two writers at once and expects both projects to be saved. Inside one MCP server, writes also go one at a time.
-- **Hand edits:** edit `config.json` only when no brigade agent is running, or use the `brigade project` command, which takes the same lock.
+- **Hand edits:** edit `config.json` only when no brigade agent is running.
 - **One snapshot per tool call.** A `ConfigStore` port replaces the config loaded once in `Deps`; each use case reads one validated snapshot and uses only that. Paths and environment stay at the edge (guide A8).
 - **Tasks pin their project facts.** `task_created` records the repo and the base branch at creation. A later `update_project` affects only new tasks. Old events without these fields read the project's current values.
 - **`brigade init`** takes `owner` from `git config user.name`.
@@ -38,9 +38,9 @@ Agents can be wrong, and text in a repo can try to steer them. So every capabili
 - **One event per resolution.** `suggestion_resolved` carries the whole outcome: accept (with the note's final text), merge (with the target note id and the merged text), or reject (with a reason). The fold applies the first resolution of a suggestion and ignores later ones, so a retry or a race can never create a duplicate note. A merge into a note that was removed or changed since fails with a clear message.
 - **Scope checks.** Every note and suggestion id is checked against the caller's project before any read or change. A worker's suggestion takes its project and task from its own context and must match the task record. Tests cover a foreign project's id, the wrong role, and an unknown id, each with no event written.
 - **Delivery:** workers get every active note of their project in their system prompt, in a fenced block that says what notes are: project preferences, never permission to push, deploy, widen the task or skip checks. The brief and brigade's tool limits always win. Because capabilities are enforced in code, a bad note can mislead but can't unlock anything.
-- **Budget (owner's decision 2):** recommended: at most 20 notes and about 2,000 tokens per project, and no silent drops. At the limit, `add_note` and accepting a suggestion fail with "the notes are full: merge or remove one first". The Captain must prune before adding, so every active note is always delivered.
+- **Budget (owner's decision, like Box Yard):** at most 20 notes and about 2,000 tokens per project go into a worker's prompt, newest first. The prompt says how many older notes were left out, and the worker's `read_notes` tool lists them all. When a project is over the budget, the Captain's retro says so and asks it to merge or prune.
 - **Tools:**
-  - Worker: `suggest_note(text, why)`.
+  - Worker: `suggest_note(text, why)` and `read_notes`.
   - Captain: `list_notes`, `add_note`, `change_note`, `remove_note`, `list_suggestions`, `resolve_suggestion(id, outcome, reason, noteId?, text?)`.
   - Coordinator: `save_note(project, text)` for a rule the owner gives in its chat.
 - **The retro:** when a worker finishes, brigade's finish report to the Captain lists that task's open suggestions. The Captain resolves each with a reason. Suggestions left open stay listed until resolved.
@@ -48,9 +48,9 @@ Agents can be wrong, and text in a repo can try to steer them. So every capabili
 
 ## Part 3: Push and pull requests
 
-- **Publishing is off until the owner turns it on (owner's decision 1).** Each project has `publish: "never" | "pr"` and `github: "<owner>/<name>"`. Only the owner sets them, by hand or with `brigade project publish <name> <owner>/<name>`, which checks that `origin` points at that GitHub repo before saving. Agent tools can't change them.
+- **Publishing works like Box Yard (owner's decision):** any project with a pinned `github` repo may publish, with no switch. Box Yard's real limit is a token the owner restricts to chosen repos; brigade uses the owner's full `gh` login, so the pinned repo and the checks below take that place. A project without a `github` repo can't publish.
 - **New worker tool, `create_pull_request(title, body)`**, run by brigade's MCP server outside any sandbox, one at a time per task:
-  1. Refuse unless the project's `publish` is `"pr"`.
+  1. Refuse unless the project has a pinned `github` repo.
   2. Check the worktree as `commit` does: top folder, repo, git folder, branch.
   3. Check that `git remote get-url --push origin` is the project's `github` repo on github.com.
   4. Reconcile with GitHub first: `gh pr list --repo <github> --head <task branch> --state all`. If the branch's PR is merged or closed, refuse and say the work needs a new task and a new branch. Never push to it again.
@@ -90,11 +90,12 @@ Each step is a thin slice through every layer with its tests (guide W4), the gat
 | Guard or behavior | Test that fails without it | Mutation-checked | Real run |
 | --- | --- | --- | --- |
 | Config lock: two writers keep both changes | Two concurrent `add_project` calls | Yes | — |
-| Agents can't change `publish`, `github`, `roles` | Tool rejects each field | Yes | — |
+| Agents can't change `owner`, `roles`, `repoRoots` | Tool rejects each field | Yes | — |
 | Notes scoped to the caller's project | Foreign-project id, wrong role | Yes | — |
 | One resolution per suggestion | Retried and racing resolutions | Yes | — |
-| No silent note drops | Add at the limit fails | Yes | — |
-| Publishing off unless `publish: "pr"` | Tool refuses | Yes | Yes |
+| Budget: newest notes first, the rest counted and readable | Over-budget project | Yes | — |
+| No publishing without a pinned `github` repo | Tool refuses | Yes | — |
+| Agents can't change a project's `github` repo | `update_project` rejects it | Yes | — |
 | Push only to the project's GitHub repo | `origin` pointing elsewhere | Yes | — |
 | Never push to a merged or closed PR's branch | Reconcile finds it merged | Yes | — |
 | Retry after a crash opens no second PR | Push done, create interrupted | Yes | — |
@@ -112,7 +113,6 @@ Tests that use the network or real agents stay out of the gate (guide T12).
 | `domain` | `notes.ts` (fold, budget), `pullRequests.ts` (PR state from events), project write rules in `config.ts` |
 | `application` | `projects.ts`, `notes.ts`, `publish.ts` use cases; ports `ConfigStore`, `Repos` (find and inspect repos, push), `GitHub` (list, create, edit, view PRs) |
 | `adapters` | `config/fileConfigStore.ts` (lock, atomic write), `git/` gains repo inspection and push, `github/ghCli.ts` |
-| `entrypoints` | `brigade project publish` |
 | `mod` | reads `config.json` for projects; `model.js` gains notes and PR fields |
 
 The publish use case calls git (through `Repos`) and GitHub (through `GitHub`) itself, so the two adapters never import each other (guide A1). No new dependencies: `gh` 2.103.3 is installed and signed in.
@@ -120,12 +120,12 @@ The publish use case calls git (through `Repos`) and GitHub (through `GitHub`) i
 ## Risks
 
 - **A hand edit to `config.json` while agents run** can lose a change, because an editor ignores the lock. Hence the rule above and the `brigade project` command.
-- **Publishing uses the owner's GitHub login.** It is off by default, limited to one pinned repo per project, fast-forward only and never forced, and every push and PR is in the event log.
+- **Publishing uses the owner's full GitHub login, with no switch (the owner's choice).** A worker in any GitHub-linked project can push its own task branch and open a PR in that project's pinned repo. Agents can add projects, so a confused Coordinator could add one of the owner's repos and publish there. The limits are code-enforced: one pinned repo per project, the task's own branch, fast-forward only, never forced, never to a merged or closed PR's branch, and every push and PR in the event log.
 - **Notes can be wrong.** Prompts treat them as preferences, never permissions, and the owner can ask the Captain to remove one.
 
-## Decisions for the owner
+## Decisions (owner, 2026-11-09)
 
-1. **Who allows publishing?** Recommended: per project, by the owner only (`publish: "pr"` with a pinned `github` repo, through `brigade project publish`). Agents can never turn it on.
-2. **What happens when notes are full?** Recommended: no silent drops. Adding fails until the Captain merges or removes a note, so every active note reaches every worker. The budget is 20 notes and about 2,000 tokens.
-3. **A GitHub repo for step 3's checks.** Recommended: a new private repo, `smkamranqadri/brigade-e2e-sandbox`, holding only test files and seeded with one commit on `main`. Creating it is outward-facing, so it needs your yes, or you create it. Before the runs, the script checks that git can push to it (`git push --dry-run`), because `gh` being signed in does not by itself set up git's credentials.
-4. **Defaults:** `repoRoots` is `~/Repositories`.
+1. **Publishing:** like Box Yard. Any project whose `origin` is on GitHub may publish, pinned to that repo; no switch.
+2. **Notes over the budget:** like Box Yard. Newest first within 20 notes and about 2,000 tokens; the rest counted in the prompt and readable with `read_notes`.
+3. **Test repo:** Claude creates a private `smkamranqadri/brigade-e2e-sandbox` when step 3 starts, seeded with one commit on `main`. Before the runs, the script checks git can push to it (`git push --dry-run`), since a `gh` login does not by itself set up git's credentials.
+4. **`repoRoots`:** `~/Repositories`.
