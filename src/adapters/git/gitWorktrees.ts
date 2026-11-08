@@ -58,7 +58,11 @@ async function checkedPushUrl(gitDir: string, github: string): Promise<string> {
   return url;
 }
 
-/** The worktree's own git folder, once its top folder, repo and branch all match the task's record. */
+/**
+ * The worktree's own git folder, once its top folder, repo, git folder and branch all match the task's record. Each
+ * check stops a case the others miss: a subfolder, a forged git folder planted in .git/worktrees, the repo's own git
+ * folder, and a switched branch (one test each in adapters.test.ts).
+ */
 async function verifiedGitDir({ worktree, repo, branch }: CommitTarget): Promise<string> {
   const at = ["-C", worktree];
   const [top, common, gitDir, current] = await Promise.all([

@@ -169,6 +169,40 @@ describe("GitWorktrees", () => {
       await expect(s.worktrees.push(s.target, "acme/shop")).rejects.toThrow("it is on investigate, not brigade/mine-1");
     });
 
+    // Each of the next three cases trips exactly one check, so each check is shown to matter on its own.
+    const onlyProblem = (problem: string) =>
+      new RegExp(`^Brigade won't commit: this is no longer the task's worktree \\(${problem}\\)\\.$`);
+
+    it("when the commit is aimed at a folder inside the worktree (top folder check only)", async () => {
+      const s = await setup();
+      const inner = path.join(s.mine, "src");
+      await mkdir(inner);
+      await expect(s.worktrees.commit({ ...s.target, worktree: inner }, "x")).rejects.toThrow(
+        onlyProblem("its top folder is [^;()]+"),
+      );
+    });
+
+    it("when a forged git folder is planted in the repo's worktrees folder (repo check only)", async () => {
+      const s = await setup();
+      const forged = path.join(s.repo, ".git", "worktrees", "forged");
+      execFileSync("git", ["init", "-q", "--bare", forged]);
+      s.git(forged, "symbolic-ref", "HEAD", "refs/heads/brigade/mine-1");
+      s.git(forged, "config", "core.bare", "false");
+      await writeFile(path.join(s.mine, ".git"), `gitdir: ${forged}\n`);
+      await expect(s.worktrees.commit(s.target, "x")).rejects.toThrow(
+        onlyProblem("it belongs to [^;()]+, not [^;()]+"),
+      );
+      expect(s.git(s.repo, "log", "-1", "--format=%s", "brigade/mine-1")).toBe("init");
+    });
+
+    it("when the .git file points at the repo's own git folder on the task's branch (git folder check only)", async () => {
+      const s = await setup();
+      s.git(s.repo, "symbolic-ref", "HEAD", "refs/heads/brigade/mine-1");
+      await writeFile(path.join(s.mine, ".git"), `gitdir: ${path.join(s.repo, ".git")}\n`);
+      await expect(s.worktrees.commit(s.target, "x")).rejects.toThrow(onlyProblem("its git folder is [^;()]+"));
+      expect(s.git(s.repo, "log", "-1", "--format=%s", "brigade/mine-1")).toBe("init");
+    });
+
     it("when the worktree's .git file points at another task's worktree", async () => {
       const s = await setup();
       const siblingGitDir = s.git(s.sibling, "rev-parse", "--absolute-git-dir");
