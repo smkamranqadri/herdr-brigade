@@ -23,6 +23,8 @@ Outside `src/`:
 4. The worker calls `finish` or `ask_user`. Brigade records the event and types a report into the Captain.
 5. The Captain calls `report`. Brigade types it into the Coordinator.
 
+Brigade finds its agents by their `hc` labels (`brigade=main`, `role`, `project`, `task`), using `hc ls --label`, because `hc ls --json` does not print labels.
+
 Each agent runs its own copy of the MCP server (`brigade mcp`). The server reads its role, project and task from its environment, and knows its terminal from `HC_TERMINAL_ID`.
 
 ## Where new code goes

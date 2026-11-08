@@ -15,11 +15,13 @@ The ideas come from Box Yard (AgentSystemLabs/box-yard). The code is our own (gu
 ## Development
 
 ```sh
-mise install && npm ci   # set up: the pinned Node 22.23.3, the dev tools and the pre-commit hook
-npm run gate             # test: format, lint, types, layer rules, unused code, suppressions, audit, tests
+mise install && npm ci          # set up: the pinned Node 22.23.3, the dev tools and the pre-commit hook
+npm run brigade -- init         # write ~/.config/herdr-brigade/config.json, then add your projects to it
+npm run brigade -- start        # run: start the Coordinator, then open it from Herdr's agent list
+npm run gate                    # test: format, lint, types, layer rules, unused code, suppressions, audit, tests
 ```
 
-The `brigade` command arrives in phase 1, step 3. See `docs/plan-phase-1.md`. Agent rules are in `AGENTS.md`.
+`npm run brigade -- status` lists the brigade's agents and tasks. The plan is in `docs/plan-phase-1.md`, real-agent runs are in `docs/e2e-runs.md`, and agent rules are in `AGENTS.md`.
 
 ## Status: proof of concept
 

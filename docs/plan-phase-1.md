@@ -55,7 +55,7 @@ PR tracking and a merge button, project notes and the notes retro, hooks, schedu
    - `package.json` with `packageManager`, a `mise.toml` that pins Node 22.23.3, and a lock file;
    - `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `.editorconfig`, `.env.example`, `LICENSE` (MIT, unless you say otherwise);
    - lefthook for pre-commit, and a gate script that the hook and later CI share.
-3. **A tracer bullet** (guide W4): the Coordinator, one Captain and one worker on Claude, through every layer, with tests.
+3. **A tracer bullet** (guide W4): the Coordinator, one Captain and one worker on Claude, through every layer, with tests. **Done 2026-11-08**; see `docs/e2e-runs.md`. Open: the worker's permission mode.
 4. Add the Codex and pi adapters, behind contract tests that every adapter passes.
 5. Add parallel tasks with worktrees.
 6. Add the mod.

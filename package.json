@@ -9,7 +9,11 @@
   "engines": {
     "node": "22.23.3"
   },
+  "bin": {
+    "brigade": "src/entrypoints/cli.ts"
+  },
   "scripts": {
+    "brigade": "node src/entrypoints/cli.ts",
     "prepare": "lefthook install",
     "check:node": "node scripts/check-node.ts",
     "format": "prettier --write .",

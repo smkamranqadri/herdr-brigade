@@ -29,7 +29,12 @@ Each harness ran one worker turn with the POC's MCP server. The task: write `hel
   - Codex read your engineering guide because of your global instructions. It also loaded `~/.codex/hooks.json`, which caused one warning about a SessionEnd timeout.
   - pi loaded your skills and extensions (herdr, lore, orca-*).
 
+## Follow-up messages (checked 2026-11-08, phase 1 step 3)
+
+`hc send` into a Codex or pi agent that has finished a turn starts a new turn, as it does for Claude. Each agent got "reply with exactly the word READY", replied `READY`, and `hc` showed turn 2 as `done`. `hc` wraps the text as `<hc from="<sender>">…</hc>`, where the sender is the terminal that called `hc send`.
+
+Codex remembered the folder trust from the first spike, so it asked nothing the second time.
+
 ## Not tested
 
-- A second message into a running Codex or pi agent through `hc send`. A Captain or Coordinator on those harnesses depends on this. Step 3 tests it first.
 - Codex's trust prompt when brigade answers it automatically. In the spike I pressed Enter by hand.
