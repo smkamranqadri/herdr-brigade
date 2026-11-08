@@ -10,11 +10,19 @@ export type Role = (typeof ROLES)[number];
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 export type Effort = (typeof EFFORTS)[number];
 
-/** Which harness, model and effort one agent runs on. */
+/**
+ * How freely an agent may run tools. ask: the owner approves commands in Herdr. auto: the harness approves
+ * routine ones and stops on risky ones. bypass: no approval at all. Each harness maps it onto its own flags.
+ */
+const PERMISSIONS = ["ask", "auto", "bypass"] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+
+/** Which harness, model, effort and permission level one agent runs on. */
 export interface AgentSpec {
   readonly harness: Harness;
   readonly model: string;
   readonly effort: Effort;
+  readonly permissions: Permission;
 }
 
 /** Who an agent is in the brigade. Its MCP server gets this from its launcher. */
@@ -36,3 +44,4 @@ function isOneOf<T extends string>(list: readonly T[], value: unknown): value is
 export const isHarness = (value: unknown): value is Harness => isOneOf(HARNESSES, value);
 export const isRole = (value: unknown): value is Role => isOneOf(ROLES, value);
 export const isEffort = (value: unknown): value is Effort => isOneOf(EFFORTS, value);
+export const isPermission = (value: unknown): value is Permission => isOneOf(PERMISSIONS, value);

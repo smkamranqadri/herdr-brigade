@@ -1,4 +1,4 @@
-import { isEffort, isHarness, type AgentSpec, type Role } from "./agent.ts";
+import { isEffort, isHarness, isPermission, type AgentSpec, type Permission, type Role } from "./agent.ts";
 
 export interface ProjectConfig {
   readonly name: string;
@@ -19,11 +19,22 @@ export type ParseResult<T> = { ok: true; value: T } | { ok: false; errors: strin
 const NAME = /^[a-z0-9][a-z0-9-]{0,23}$/;
 const ROLE_KEYS: readonly Role[] = ["coordinator", "captain", "worker"];
 
+/** Workers run hands-off by default; the Coordinator and Captains only route work, so they ask. */
+const DEFAULT_PERMISSIONS: Readonly<Record<Role, Permission>> = { coordinator: "ask", captain: "ask", worker: "auto" };
+
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const isText = (v: unknown): v is string => typeof v === "string" && v.trim() !== "";
 
-function parseSpec(raw: unknown, where: string, errors: string[]): AgentSpec | null {
+function parsePermission(raw: unknown, role: Role, errors: string[]): Permission | null {
+  const permissions = raw ?? DEFAULT_PERMISSIONS[role];
+  if (isPermission(permissions)) return permissions;
+  errors.push(`roles.${role}.permissions must be ask, auto or bypass`);
+  return null;
+}
+
+function parseSpec(raw: unknown, role: Role, errors: string[]): AgentSpec | null {
+  const where = `roles.${role}`;
   if (!isObj(raw)) {
     errors.push(`${where} must be an object with harness, model and effort`);
     return null;
@@ -32,7 +43,9 @@ function parseSpec(raw: unknown, where: string, errors: string[]): AgentSpec | n
   if (!isHarness(harness)) errors.push(`${where}.harness must be claude, codex or pi`);
   if (!isText(model)) errors.push(`${where}.model must be a model name`);
   if (!isEffort(effort)) errors.push(`${where}.effort must be low, medium, high, xhigh or max`);
-  return isHarness(harness) && isText(model) && isEffort(effort) ? { harness, model, effort } : null;
+  const permissions = parsePermission(raw.permissions, role, errors);
+  const ok = isHarness(harness) && isText(model) && isEffort(effort) && permissions;
+  return ok ? { harness, model, effort, permissions } : null;
 }
 
 function parseProject(raw: unknown, i: number, errors: string[]): ProjectConfig | null {
@@ -55,7 +68,7 @@ function parseRoles(raw: unknown, errors: string[]): Record<Role, AgentSpec> | n
     errors.push("roles must have coordinator, captain and worker");
     return null;
   }
-  const specs = ROLE_KEYS.map((role) => [role, parseSpec(raw[role], `roles.${role}`, errors)] as const);
+  const specs = ROLE_KEYS.map((role) => [role, parseSpec(raw[role], role, errors)] as const);
   return specs.every(([, spec]) => spec !== null) ? (Object.fromEntries(specs) as Record<Role, AgentSpec>) : null;
 }
 

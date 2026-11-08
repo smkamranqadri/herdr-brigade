@@ -34,6 +34,14 @@ All are a year or more old, with releases this year and a known team or company 
 - **Check:** the gate runs `npm audit --omit=dev`, which covers the runtime profile (empty).
 - **Revisit:** when eslint or typescript-eslint moves to `minimatch` 11, or by 2026-12-08, whichever comes first.
 
+## Permissions per role (2026-11-08, owner's choice)
+
+Each role's config takes `permissions`: `ask`, `auto` or `bypass`. Workers default to `auto`; the Coordinator and Captains default to `ask`. Coordinators and Captains also never get Bash, Edit or Write, whatever their level.
+
+- **Why:** with `ask`, a Claude worker stopped at every `git commit` until the owner approved it in Herdr.
+- **Risk accepted:** the owner's lore says not to pass `--permission-mode auto` to `herdr agent start` (the older TUI). With `hc` and Claude Code 2.1.319, auto mode started with no opt-in screen, and a worker committed with no prompt (`docs/e2e-runs.md`). Auto mode still refuses some actions on its own, such as production deploys, `ssh` and credential reads.
+- Claude Code's mode for each level: workers `acceptEdits` / `auto` / `bypassPermissions`; Coordinators and Captains `manual` / `auto` / `bypassPermissions`. `manual` replaces `default`, which is no longer on Claude's documented list.
+
 ## Gaps against the guide, on purpose (guide P8)
 
 - **CI (S7, Q3):** none yet; there is no remote. Add it when the repo gets one.

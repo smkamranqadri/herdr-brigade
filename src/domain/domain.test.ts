@@ -9,9 +9,28 @@ const roles = {
 };
 
 describe("parseConfig", () => {
-  it("accepts a valid config", () => {
-    const raw = { owner: "Sam", roles, projects: [{ name: "shop", repo: "/repos/shop", baseBranch: "main" }] };
-    expect(parseConfig(raw)).toEqual({ ok: true, value: raw });
+  it("accepts a valid config, with workers on auto and the rest on ask unless it says otherwise", () => {
+    const projects = [{ name: "shop", repo: "/repos/shop", baseBranch: "main" }];
+    expect(parseConfig({ owner: "Sam", roles, projects })).toEqual({
+      ok: true,
+      value: {
+        owner: "Sam",
+        roles: {
+          coordinator: { ...roles.coordinator, permissions: "ask" },
+          captain: { ...roles.captain, permissions: "ask" },
+          worker: { ...roles.worker, permissions: "auto" },
+        },
+        projects,
+      },
+    });
+    const bypass = { ...roles, captain: { ...roles.captain, permissions: "bypass" } };
+    const parsed = parseConfig({ owner: "Sam", roles: bypass, projects });
+    expect(parsed.ok && parsed.value.roles.captain.permissions).toBe("bypass");
+  });
+
+  it("rejects an unknown permission level", () => {
+    const raw = { owner: "Sam", roles: { ...roles, worker: { ...roles.worker, permissions: "yolo" } }, projects: [] };
+    expect(parseConfig(raw)).toEqual({ ok: false, errors: ["roles.worker.permissions must be ask, auto or bypass"] });
   });
 
   it("lists every problem at once", () => {
@@ -65,7 +84,7 @@ describe("branchFor", () => {
 });
 
 describe("deriveTasks", () => {
-  const spec = { harness: "claude", model: "m", effort: "low" } as const;
+  const spec = { harness: "claude", model: "m", effort: "low", permissions: "auto" } as const;
   const created = {
     kind: "task_created",
     project: "shop",

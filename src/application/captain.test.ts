@@ -50,7 +50,7 @@ describe("createTask", () => {
 });
 
 describe("workerSpec", () => {
-  const base = { harness: "codex", model: "gpt-x", effort: "medium" } as const;
+  const base = { harness: "codex", model: "gpt-x", effort: "medium", permissions: "auto" } as const;
 
   it("uses the config's spec when nothing is chosen", () => {
     expect(workerSpec(base, { title: "t", prompt: "p" })).toEqual(base);
@@ -61,6 +61,7 @@ describe("workerSpec", () => {
       harness: "pi",
       model: "openai/x",
       effort: "low",
+      permissions: "auto",
     });
     expect(() => workerSpec(base, { title: "t", prompt: "p", harness: "pi" })).toThrow(
       'Give a model for pi: the default model "gpt-x" is for codex.',

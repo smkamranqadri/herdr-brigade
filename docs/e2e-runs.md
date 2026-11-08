@@ -24,3 +24,15 @@ Request typed into the Coordinator, in a dictated style: "ok so in the demo proj
 - **A stale status can end a wait early.** `hc wait` returned at once with the old `blocked` status after the approval. Brigade itself never waits on status; it reacts to `finish` and `ask_user` events.
 
 Not checked in this run: Codex or pi in any role (step 4), several workers at once (step 5), and `send_to_task` follow-ups with real agents.
+
+## 2026-11-08: workers on `auto` permissions
+
+The owner chose a per-role `permissions` setting (`ask`, `auto` or `bypass`), with workers on `auto` by default. Same setup as above, request "in demo, add bye.txt with the single line bye from brigade and commit it on the task branch, nothing else".
+
+| Check | Result |
+| --- | --- |
+| Claude in auto mode shows no opt-in screen at start | Pass: started with no prompt, footer "auto mode on" |
+| The worker commits with no approval prompt | Pass: created 11:01:01, `finish` 11:01:11; 0 approval prompts in its history |
+| Git, checked by hand | `2f118b6 Add bye.txt` holds only `bye.txt`; `od -c` shows `bye from brigade\n`; worktree clean; `main` unchanged |
+
+Found: the Captain first called a bare `create_task` ("No such tool available") and then the real `mcp__brigade__create_task`. The prompts now say the tools are on the `brigade` MCP server.

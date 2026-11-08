@@ -20,7 +20,7 @@ const STARTER = (owner: string) => ({
   roles: {
     coordinator: { harness: "claude", model: "claude-opus-5-5", effort: "medium" },
     captain: { harness: "claude", model: "claude-sonnet-5-5", effort: "low" },
-    worker: { harness: "claude", model: "claude-sonnet-5-5", effort: "medium" },
+    worker: { harness: "claude", model: "claude-sonnet-5-5", effort: "medium", permissions: "auto" },
   },
   projects: [],
 });

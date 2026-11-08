@@ -27,7 +27,7 @@ export function workerSpec(base: AgentSpec, input: CreateTaskInput): AgentSpec {
   }
   const effort = input.effort ?? base.effort;
   if (!isEffort(effort)) throw new BrigadeError(`Unknown effort "${effort}". Use low, medium, high, xhigh or max.`);
-  return { harness, model: input.model ?? base.model, effort };
+  return { harness, model: input.model ?? base.model, effort, permissions: base.permissions };
 }
 
 /** Starts a worker for one new task, in its own branch and worktree. */

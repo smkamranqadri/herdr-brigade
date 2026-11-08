@@ -7,9 +7,9 @@ import type { Deps, HarnessLaunchRequest, LaunchContext, TerminalInfo, TerminalL
 const TEST_CONFIG: BrigadeConfig = {
   owner: "Sam",
   roles: {
-    coordinator: { harness: "claude", model: "opus", effort: "medium" },
-    captain: { harness: "claude", model: "sonnet", effort: "low" },
-    worker: { harness: "codex", model: "gpt-x", effort: "medium" },
+    coordinator: { harness: "claude", model: "opus", effort: "medium", permissions: "ask" },
+    captain: { harness: "claude", model: "sonnet", effort: "low", permissions: "ask" },
+    worker: { harness: "codex", model: "gpt-x", effort: "medium", permissions: "auto" },
   },
   projects: [{ name: "shop", repo: "/repos/shop", baseBranch: "main" }],
 };

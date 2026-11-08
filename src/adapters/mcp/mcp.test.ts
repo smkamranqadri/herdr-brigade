@@ -120,6 +120,11 @@ describe("toolsFor", () => {
     const f = fakeDeps();
     const tools = toolsFor(f.deps, ctx({ role: "captain", project: "shop", terminal: "t3" }));
     await tools.create_task?.run({ title: "t", prompt: "p", harness: "claude", model: "sonnet", effort: "low" });
-    expect(f.harnesses.requests[0]?.spec).toEqual({ harness: "claude", model: "sonnet", effort: "low" });
+    expect(f.harnesses.requests[0]?.spec).toEqual({
+      harness: "claude",
+      model: "sonnet",
+      effort: "low",
+      permissions: "auto",
+    });
   });
 });
