@@ -68,6 +68,8 @@ fi
 EVENTS="$RUN/state/events.jsonl"
 end=$((SECONDS + WAIT_SECONDS))
 while [ $SECONDS -lt $end ]; do
+  # Done when enough tasks finished, the Captain reported after the last one, and the log has been quiet for
+  # 10 seconds, so a second report that follows soon is recorded too.
   if [ -f "$EVENTS" ] && python3 -I -c '
 import json,sys
 events=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
@@ -75,7 +77,7 @@ done=[e for e in events if e["kind"] in ("task_finished","task_asked")]
 last=max((e["at"] for e in done), default=None)
 reported=any(e["kind"]=="message_sent" and e.get("to")=="coordinator" and last and e["at"]>=last for e in events)
 sys.exit(0 if len({e["task"] for e in done})>=int(sys.argv[2]) and reported else 1)
-' "$EVENTS" "$EXPECT_TASKS"; then break; fi
+' "$EVENTS" "$EXPECT_TASKS" && [ $(( $(date +%s) - $(stat -c %Y "$EVENTS") )) -ge 10 ]; then break; fi
   hc wait "$COORD" --timeout 15 >/dev/null 2>&1 || true
   timeout 3 tail -f /dev/null || true
 done

@@ -97,3 +97,13 @@ A real two-task Claude run (red.txt and blue.txt, 52 s, both committed), then th
 - `herdr-app check` passed for the mod and for the edited `auto-tabs`, and `herdr-app status` showed no errors.
 
 Not checked by eye: `brigade start` reported "It is open in herdr-app", and `herdr-app do agent.focus` returned `ok`. The owner was working in another space at the time, and the screenshot showed their own session. The view was not switched again to check.
+
+## 2026-11-09: phase 1 step 7, two workers at once on pi
+
+`EXPECT_TASKS=2 scripts/e2e.sh pi "…alpha.txt…beta.txt…"`, `openai/gpt-6.1-sol` at low thinking, 76 s. The Captain created both tasks in the same second. Commits `f9fba32` (alpha) and `00495ab` (beta). Checked by hand: one file each, exact bytes, clean worktrees, `main` unchanged. The Captain reported twice (alpha, then both), and the Coordinator received both.
+
+Found and fixed:
+
+- **`brigade start` could not focus the new Coordinator:** herdr-app answered "no running terminal" because it had not seen the new hc terminal yet. Focus now retries for up to 10 seconds on that error only.
+- **pi dropped the Enter of the first message again;** the script pressed it again, as designed.
+- **The script stopped as soon as the alpha report arrived,** in the same second as the beta finish. It now also waits for 10 quiet seconds, so a second report is recorded.

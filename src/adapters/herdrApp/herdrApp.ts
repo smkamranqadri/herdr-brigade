@@ -8,6 +8,10 @@ export type HerdrAppRunner = (args: readonly string[]) => Promise<string>;
 
 const CALL_TIMEOUT_MS = 15_000;
 const MOD_NAME = "brigade";
+/** herdr-app learns of a new hc terminal a moment after it starts; until then it says this. */
+const NOT_SEEN_YET = "no running terminal";
+const FOCUS_WAIT_MS = 10_000;
+const FOCUS_RETRY_MS = 500;
 /** The mod's files, copied as they are. config.js is written by the install. */
 const MOD_FILES = ["main.js", "model.js", "mod.json", "brigade.svg"];
 
@@ -24,16 +28,35 @@ export function herdrAppRunner(bin: string): HerdrAppRunner {
     });
 }
 
+export interface HerdrAppOptions {
+  readonly sleep?: (ms: number) => Promise<void>;
+  readonly now?: () => number;
+}
+
 export class HerdrApp {
   private readonly run: HerdrAppRunner;
+  private readonly sleep: (ms: number) => Promise<void>;
+  private readonly now: () => number;
 
-  constructor(run: HerdrAppRunner) {
+  constructor(run: HerdrAppRunner, options: HerdrAppOptions = {}) {
     this.run = run;
+    this.sleep = options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.now = options.now ?? Date.now;
   }
 
-  /** Shows the agent's terminal in the window, so the owner can type to it. */
+  /** Shows the agent's terminal in the window, so the owner can type to it. Waits while herdr-app catches up. */
   async focus(address: string): Promise<void> {
-    await this.run(["do", "agent.focus", "--terminal", address]);
+    const until = this.now() + FOCUS_WAIT_MS;
+    for (;;) {
+      try {
+        await this.run(["do", "agent.focus", "--terminal", address]);
+        return;
+      } catch (err) {
+        const notSeenYet = err instanceof Error && err.message.includes(NOT_SEEN_YET);
+        if (!notSeenYet || this.now() >= until) throw err;
+        await this.sleep(FOCUS_RETRY_MS);
+      }
+    }
   }
 
   /** Opens (or closes) the Brigade panel as a window. */
