@@ -29,3 +29,24 @@ Reviewer: Codex CLI, `gpt-6.1-sol` at medium effort, read-only sandbox, on the d
 | R4 | suggestion | The test fake dropped the first message unless told to type it in. | Fixed: it delivers the message once, in argv or typed in, as the contract requires. Kept as is: the routing-role contract test still uses a containment check, because each harness also has an exact-argv test. |
 
 The reviewer could not run the tests in its read-only sandbox (Vite needs a temp folder) and started no agents. The implementer ran the full gate.
+
+## Phase 2 plan review (2026-11-09, before any code)
+
+Reviewer: Codex CLI, `gpt-6.1-sol` at medium effort, read-only, on `docs/plan-phase-2.md` as first written (`12f159d`), checked against the code, the guide and the installed tools. 14 findings: 7 blocking, 7 suggestions. All were checked and taken into the revised plan:
+
+| ID | Finding | Change to the plan |
+| --- | --- | --- |
+| R1 | Check-then-rename can lose a concurrent config change (handlers run in parallel) | A cross-process lock around read, validate and write, with a two-writer test |
+| R2 | "A worker called the tool" is not the owner's permission to push | Publishing off by default; only the owner turns it on, per project |
+| R3 | An accepted suggestion could turn repo text into a lasting instruction | Notes carry their source, are fenced as preferences, and can't unlock anything because power is enforced in code |
+| R4 | Note and suggestion ids had no project check | Every id checked against the caller's project, with negative tests |
+| R5 | Local checks didn't pin the GitHub repo or the pushed ref | A pinned `github` repo per project, a checked push URL, an explicit refspec and `--repo/--head/--base` on every `gh` call |
+| R6 | No recovery after a crash, and a merged PR's branch could be pushed again | Reconcile with GitHub before every publish; refuse merged or closed PRs |
+| R7 | The budget silently dropped rules, against the goal | Owner's decision: recommended no silent drops |
+| R8 | Accepting a suggestion took two events | One resolution event, first one wins |
+| R9 | Fresh config needed snapshot and pinning rules | One snapshot per call; tasks pin repo and base branch |
+| R10 | Discovery, push and `gh` lacked full limits | Limits, no prompts, an overall deadline and shared refresh |
+| R11 | Merging "by asking a worker" doesn't work on sandboxed Codex | GitHub is the supported merge path this phase |
+| R12 | No mutation plan for new guards; the notes example was a code convention | A proof matrix; the notes example is now a preference |
+| R13 | Approving the repo doesn't prepare the test fixture or git credentials | Seeded repo, pinned identity, `git push --dry-run` before runs |
+| R14 | A project with notes but no agents would not show in the panel | The panel reads projects from the config |
