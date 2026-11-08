@@ -26,6 +26,8 @@ export interface Paths {
   readonly node: string;
   readonly cli: string;
   readonly promptsDir: string;
+  /** The pi extension that registers brigade's MCP server for one pi session. */
+  readonly piExtension: string;
   readonly worktreesRoot: string;
 }
 
@@ -58,6 +60,7 @@ export function readPaths(env: Env): Paths {
     node: process.execPath,
     cli: path.join(ROOT, "src", "entrypoints", "cli.ts"),
     promptsDir: path.join(ROOT, "prompts"),
+    piExtension: path.join(ROOT, "pi-extension", "brigade.ts"),
     worktreesRoot: env[ENV.worktrees] ?? path.join(home, ".herdr", "worktrees"),
   };
 }

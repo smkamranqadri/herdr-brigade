@@ -36,3 +36,24 @@ The owner chose a per-role `permissions` setting (`ask`, `auto` or `bypass`), wi
 | Git, checked by hand | `2f118b6 Add bye.txt` holds only `bye.txt`; `od -c` shows `bye from brigade\n`; worktree clean; `main` unchanged |
 
 Found: the Captain first called a bare `create_task` ("No such tool available") and then the real `mcp__brigade__create_task`. The prompts now say the tools are on the `brigade` MCP server.
+
+## 2026-11-08: phase 1 step 4, all roles on Codex
+
+Versions: Codex CLI 0.167.0, `gpt-6.1-terra` at low effort for the Coordinator, the Captain and the worker. Request: "in demo add codex.txt with the single line hello from codex, commit it on the task branch, nothing else".
+
+The first two attempts got stuck. Each fix below came from those attempts:
+
+- **Codex shows its ready footer for about a second before its trust prompt.** Brigade read "? for shortcuts" as ready and stopped. Ready now has to hold for 3 seconds with no prompt.
+- **Codex can draw the trust prompt before it reads keys.** A press it drops is now repeated. Brigade reads the cursor and presses Down or Enter one key at a time, and counts the prompt answered only once it is gone.
+- **Codex 0.167 drops a first message given on its command line once its trust prompt shows.** Three probes showed this, with and without `--`, and after waiting 20 seconds. Brigade now types Codex's first message in after start.
+- **`hc send` refuses while a new agent's output settles** ("still starting"). `send` now retries for up to 30 seconds on that error only.
+- **`-c projects."<folder>".trust_level="trusted"` does not skip the trust prompt.** Answering the prompt saves the folder as trusted in `~/.codex/config.toml`, as Claude saves it in `~/.claude.json`.
+
+Third attempt, after the fixes:
+
+| Step | Result |
+| --- | --- |
+| Coordinator → Captain → worker, all on Codex | Pass. The Captain's brief was typed in once it was ready. The worker's trust prompt was answered and its brief typed in. |
+| Worker commits | **Fail.** Codex's `workspace-write` sandbox keeps git metadata read-only, even with `--add-dir <repo>/.git`: `index.lock: Read-only file system`. The worker called `ask_user`, and the Captain reported the problem to the Coordinator correctly. |
+
+Open: how a sandboxed Codex worker commits. This is the owner's decision.

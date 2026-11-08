@@ -24,8 +24,10 @@ export interface TerminalLaunch {
 export interface TrustPrompt {
   /** Text that shows the prompt is on screen. */
   readonly text: string;
-  /** Keys that answer yes, e.g. ["down", "enter"]. */
-  readonly keys: readonly string[];
+  /** The character that marks the selected choice, e.g. "❯". */
+  readonly cursor: string;
+  /** Text of the choice that means yes, e.g. "Yes, I trust this folder". */
+  readonly yes: string;
   /** Text that shows the agent is ready, so there is no prompt to answer. */
   readonly ready: readonly string[];
 }
@@ -37,6 +39,7 @@ export interface Terminals {
   launch(req: TerminalLaunch): Promise<string>;
   /** Answers the trust prompt if it appears, or sees the agent ready without one, or gives up. */
   answerTrust(address: string, trust: TrustPrompt): Promise<TrustOutcome>;
+  /** Types text into the terminal and presses Enter, waiting while a just-started agent settles. */
   send(address: string, text: string): Promise<void>;
   /** Live terminals that carry all of these labels. */
   find(labels: Readonly<Record<string, string>>): Promise<TerminalInfo[]>;
@@ -58,11 +61,18 @@ export interface HarnessLaunchRequest {
   /** The first message; null starts the agent waiting for input. */
   readonly firstMessage: string | null;
   readonly mcp: McpCommand;
+  /** Folders outside its own that a sandboxed agent must be able to write, such as the repo's git folder. */
+  readonly writableDirs: readonly string[];
 }
 
 export interface HarnessLaunch {
   readonly argv: readonly string[];
   readonly trust: TrustPrompt | null;
+  /**
+   * A first message to type in once the agent is ready, for a harness that loses one given on its command line
+   * (Codex drops it when its trust prompt shows). Null when the argv carries it, or when there is none.
+   */
+  readonly sendFirst: string | null;
 }
 
 /** Port to the agent programs: builds the command that starts one. */

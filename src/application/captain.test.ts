@@ -26,6 +26,7 @@ describe("createTask", () => {
       argv: ["codex", "bg-task-000001"],
     });
     expect(f.harnesses.requests[0]?.firstMessage).toBe("Fix it.");
+    expect(f.harnesses.requests[0]?.writableDirs).toEqual(["/repos/shop/.git"]);
     expect(f.mcpContexts).toEqual([
       { role: "worker", project: "shop", task: "task-000001", title: "Fix the login bug", parent: "t3" },
     ]);
@@ -41,19 +42,27 @@ describe("createTask", () => {
   });
 
   it("records the task before answering the worker's trust prompt, so no report can come first", async () => {
-    const f = fakeDeps({ trust: { text: "trust", keys: ["enter"], ready: [] } });
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
     await createTask(f.deps, captain, { title: "Login", prompt: "p" });
     expect(f.eventsAtTrust).toEqual([1]);
     expect(f.events.events[0]?.kind).toBe("task_created");
   });
 
   it("fails with the terminal's address when the worker never becomes ready, and keeps the task on record", async () => {
-    const f = fakeDeps({ trust: { text: "trust", keys: ["enter"], ready: [] } });
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
     f.terminals.trustOutcome = "timeout";
     await expect(createTask(f.deps, captain, { title: "Login", prompt: "p" })).rejects.toThrow(
       'The worker in terminal t1 started but never became ready. It may be stuck on a prompt: check it with "hc read t1".',
     );
     expect(f.events.events.map((e) => e.kind)).toEqual(["task_created"]);
+  });
+
+  it("types the first message in after start for a harness that asks for it", async () => {
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
+    f.harnesses.sendFirst = true;
+    await createTask(f.deps, captain, { title: "Login", prompt: "Fix it." });
+    expect(f.terminals.trustAnswered).toEqual(["t1"]);
+    expect(f.terminals.sent).toEqual([{ address: "t1", text: "Fix it." }]);
   });
 
   it("refuses an agent with no project", async () => {

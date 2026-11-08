@@ -40,7 +40,7 @@ describe("startCoordinator", () => {
   });
 
   it("answers the trust prompt when the harness has one", async () => {
-    const f = fakeDeps({ trust: { text: "trust", keys: ["enter"], ready: [] } });
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
     await startCoordinator(f.deps);
     expect(f.terminals.trustAnswered).toEqual(["t1"]);
     expect(f.eventsAtTrust).toEqual([1]);

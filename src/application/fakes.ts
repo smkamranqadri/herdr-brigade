@@ -60,9 +60,12 @@ class FakeHarnesses {
   constructor(trust: TrustPrompt | null = null) {
     this.trust = trust;
   }
+  /** Act like Codex: hand the first message back to be typed in after start. */
+  sendFirst = false;
   prepare(req: HarnessLaunchRequest) {
     this.requests.push(req);
-    return Promise.resolve({ argv: [req.spec.harness, req.agentId], trust: this.trust });
+    const sendFirst = this.sendFirst ? req.firstMessage : null;
+    return Promise.resolve({ argv: [req.spec.harness, req.agentId], trust: this.trust, sendFirst });
   }
 }
 

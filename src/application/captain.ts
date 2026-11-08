@@ -46,6 +46,8 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
       context: { role: "worker", project: project.name, task, title: input.title, parent: ctx.terminal },
       firstMessage: input.prompt,
       promptValues: { PROJECT: project.name, TASK: task, TITLE: input.title, BRANCH: branch },
+      // A worktree's commits land in the main repo's .git folder, outside the worktree.
+      writableDirs: [`${project.repo}/.git`],
     },
     (terminal) => ({
       kind: "task_created",

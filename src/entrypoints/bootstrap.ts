@@ -35,7 +35,7 @@ export function buildDeps(config: BrigadeConfig, paths: Paths): Deps {
   return {
     config,
     terminals: new HcTerminals({ run: hcRunner(paths.hc) }),
-    harnesses: new HarnessAdapters(path.join(paths.stateDir, "agents")),
+    harnesses: new HarnessAdapters({ agentsDir: path.join(paths.stateDir, "agents"), piExtension: paths.piExtension }),
     events: new JsonlEventLog(path.join(paths.stateDir, "events.jsonl")),
     worktrees: new GitWorktrees(paths.worktreesRoot),
     prompts: new FilePrompts(paths.promptsDir),

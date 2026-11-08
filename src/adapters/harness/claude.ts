@@ -1,12 +1,12 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { HarnessLaunch, HarnessLaunchRequest, TrustPrompt } from "../../application/ports.ts";
+import { writeAgentFile, type HarnessFiles } from "./files.ts";
 import type { Permission, Role } from "../../domain/agent.ts";
 
 /** Claude Code asks once per folder; "Yes, I trust this folder" is the second choice. */
 const CLAUDE_TRUST: TrustPrompt = {
   text: "trust this folder",
-  keys: ["down", "enter"],
+  cursor: "❯",
+  yes: "Yes, I trust this folder",
   ready: ["? for shortcuts", "accept edits on", "manual mode on", "auto mode on", "bypass permissions on"],
 };
 
@@ -25,14 +25,12 @@ function roleFlags(role: Role, permissions: Permission): string[] {
   return [...READ_ONLY, "--permission-mode", MODES[permissions].routing];
 }
 
-/** Builds the `claude` command for one agent, and writes its MCP config and system prompt under `agentDir`. */
-export async function prepareClaude(req: HarnessLaunchRequest, agentDir: string): Promise<HarnessLaunch> {
-  await mkdir(agentDir, { recursive: true, mode: 0o700 });
-  const promptFile = path.join(agentDir, "system-prompt.md");
-  const mcpFile = path.join(agentDir, "mcp.json");
-  await writeFile(promptFile, req.systemPrompt, { mode: 0o600 });
+/** Builds the `claude` command for one agent, and writes its MCP config and system prompt in its folder. */
+export async function prepareClaude(req: HarnessLaunchRequest, files: HarnessFiles): Promise<HarnessLaunch> {
+  const promptFile = await writeAgentFile(files.agentDir, "system-prompt.md", req.systemPrompt);
   const server = { type: "stdio", command: req.mcp.command, args: req.mcp.args, env: req.mcp.env };
-  await writeFile(mcpFile, JSON.stringify({ mcpServers: { brigade: server } }, null, 2), { mode: 0o600 });
+  const mcpConfig = JSON.stringify({ mcpServers: { brigade: server } }, null, 2);
+  const mcpFile = await writeAgentFile(files.agentDir, "mcp.json", mcpConfig);
   // --mcp-config and --allowedTools take several values, so single-value flags sit between them and the first message.
   const argv = [
     "claude",
@@ -49,6 +47,7 @@ export async function prepareClaude(req: HarnessLaunchRequest, agentDir: string)
     "--effort",
     req.spec.effort,
   ];
-  if (req.firstMessage !== null) argv.push(req.firstMessage);
-  return { argv, trust: CLAUDE_TRUST };
+  // "--" ends the options, so a brief that starts with "-" is still the message.
+  if (req.firstMessage !== null) argv.push("--", req.firstMessage);
+  return { argv, trust: CLAUDE_TRUST, sendFirst: null };
 }

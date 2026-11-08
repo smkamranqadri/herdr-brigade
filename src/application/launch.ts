@@ -20,6 +20,8 @@ export interface AgentLaunch {
   readonly context: LaunchContext;
   readonly firstMessage: string | null;
   readonly promptValues: Readonly<Record<string, string>>;
+  /** See HarnessLaunchRequest.writableDirs; none by default. */
+  readonly writableDirs?: readonly string[];
 }
 
 /**
@@ -37,6 +39,7 @@ export async function launchAgent(deps: Deps, a: AgentLaunch, started: (address:
     systemPrompt,
     firstMessage: a.firstMessage,
     mcp: deps.mcpFor(a.context),
+    writableDirs: a.writableDirs ?? [],
   });
   const labels: Record<string, string> = { [BRIGADE_LABEL]: BRIGADE_VALUE, role, harness: a.spec.harness };
   if (project) labels.project = project;
@@ -49,6 +52,7 @@ export async function launchAgent(deps: Deps, a: AgentLaunch, started: (address:
       `The ${role} in terminal ${address} started but never became ready. It may be stuck on a prompt: check it with "hc read ${address}".`,
     );
   }
+  if (plan.sendFirst !== null) await deps.terminals.send(address, plan.sendFirst);
   return address;
 }
 

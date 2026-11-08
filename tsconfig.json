@@ -16,5 +16,5 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true
   },
-  "include": ["src", "scripts", "*.ts"]
+  "include": ["src", "scripts", "pi-extension", "*.ts"]
 }
