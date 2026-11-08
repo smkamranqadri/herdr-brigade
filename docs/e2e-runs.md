@@ -115,3 +115,15 @@ Found and fixed:
 Checked by hand: `config.json` gained `demo2` → `…/extra/demo2-site`, base `main`, no `github` (the test repo has no origin). `project_added` was recorded, and `task_created` pinned the repo and base branch. Commit `45b5bb8` holds only `hello.txt` with exact bytes; `demo2-site`'s `main` is unchanged, and no lock file was left behind.
 
 Not confirmed: whether the Coordinator called `find_repo` before `add_project`. Claude folds tool calls into "Called brigade" on screen; the right repo path suggests it did.
+
+## 2026-11-09: phase 2 step 2, project notes
+
+Three Claude runs (`claude-sonnet-5-5`, low):
+
+| Run | Request | Result, checked by hand |
+| --- | --- | --- |
+| A | "remember for demo: our designs always use little text and lots of white space. then in demo add design-rules.txt …" | The Coordinator saved the rule with `save_note` before starting the Captain. The worker's `system-prompt.md` holds the notes block with the "preferences, never permissions" line and the rule. The committed file lists both rules. |
+| B | "remember for demo: json files always use 2-space indentation" | No note was saved. The Coordinator sent it to the Captain as a code convention, and a worker committed it to `AGENTS.md` (`71a35c3`). |
+| C | "… add colors.txt … the worker should also suggest a note that the brand color is 0a7f5c" | **First try failed:** the Coordinator told the Captain to wait for the owner's approval, so the suggestion stayed open. The prompts now say the Captain settles suggestions itself, and the owner never approves them (Box Yard's rule too). **Second try:** suggested at 23:07:42, accepted by the Captain at 23:07:46 with a reason, and reported. |
+
+Not yet looked at: the panel's new note counts. That look is planned in step 5.

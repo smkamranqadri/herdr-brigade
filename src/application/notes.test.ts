@@ -98,7 +98,7 @@ describe("the notes retro", () => {
     expect(f.terminals.sent.at(-1)?.text).toBe(
       [
         '[brigade] Task task-000001 "Poster" finished: Poster done',
-        "Notes retro: settle each with resolve_suggestion and a reason.",
+        "Notes retro: settle each yourself now with resolve_suggestion and a reason; the owner doesn't approve suggestions.",
         "- sugg-000003: Lots of white space (why: the owner said so twice)",
         "- sugg-000004: Run npm test first (why: it failed once)",
       ].join("\n"),

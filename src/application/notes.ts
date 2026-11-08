@@ -175,7 +175,12 @@ export async function retroFor(deps: Deps, project: string, task: string): Promi
   const notes = await current(deps, project);
   const open = notes.suggestions.filter((s) => s.task === task && s.outcome === null);
   const lines = open.map((s) => `- ${s.id}: ${s.text} (why: ${s.why})`);
-  const parts = lines.length ? [`Notes retro: settle each with resolve_suggestion and a reason.`, ...lines] : [];
+  const parts = lines.length
+    ? [
+        `Notes retro: settle each yourself now with resolve_suggestion and a reason; the owner doesn't approve suggestions.`,
+        ...lines,
+      ]
+    : [];
   if (overBudget(notes.notes)) parts.push("The notes are over the budget: merge or remove some.");
   return parts.join("\n");
 }
