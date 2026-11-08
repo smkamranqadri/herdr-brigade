@@ -1,20 +1,8 @@
-import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import type { Commit, CommitTarget, Worktrees } from "../../application/ports.ts";
 import { BrigadeError } from "../../domain/errors.ts";
-
-const GIT_TIMEOUT_MS = 60_000;
-
-/** Runs git; `what` names the step in an error, such as "worktree add". */
-function git(args: readonly string[], what: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile("git", [...args], { timeout: GIT_TIMEOUT_MS, encoding: "utf8" }, (err, stdout, stderr) => {
-      if (err) reject(new Error(`git ${what} failed: ${stderr.trim() || err.message}`));
-      else resolve(stdout.trim());
-    });
-  });
-}
+import { git } from "./git.ts";
 
 /** One worktree per task, under `<root>/<repo folder name>/<branch>`: the place the herdr-app worktree mod uses. */
 export class GitWorktrees implements Worktrees {

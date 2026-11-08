@@ -35,6 +35,8 @@ export interface Paths {
   readonly herdrApp: string | null;
   /** The mod's source folder in this repo. */
   readonly modSource: string;
+  /** Where find_repo looks when the config names no repoRoots. */
+  readonly defaultRepoRoots: readonly string[];
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -71,6 +73,7 @@ export function readPaths(env: Env): Paths {
     herdrAppHome: env.HERDR_APP_HOME ?? path.join(home, ".config", "herdr-app"),
     herdrApp: onPath("herdr-app", env),
     modSource: path.join(ROOT, "mod"),
+    defaultRepoRoots: [path.join(home, "Repositories")],
   };
 }
 

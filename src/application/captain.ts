@@ -1,5 +1,7 @@
 import { isEffort, isHarness, type AgentContext, type AgentSpec } from "../domain/agent.ts";
+import type { ProjectConfig } from "../domain/config.ts";
 import { BrigadeError } from "../domain/errors.ts";
+import type { NewEvent } from "../domain/events.ts";
 import { branchFor, deriveTasks } from "../domain/tasks.ts";
 import { projectNamed } from "./coordinator.ts";
 import { findTerminals, launchAgent, record, terminalName } from "./launch.ts";
@@ -30,6 +32,14 @@ export function workerSpec(base: AgentSpec, input: CreateTaskInput): AgentSpec {
   return { harness, model: input.model ?? base.model, effort, permissions: base.permissions };
 }
 
+/** The task's creation event, pinning the project's repo and base branch as they are now. */
+function taskCreated(
+  project: ProjectConfig,
+  t: { task: string; title: string; branch: string; worktree: string; terminal: string; spec: AgentSpec },
+): NewEvent {
+  return { kind: "task_created", project: project.name, ...t, repo: project.repo, baseBranch: project.baseBranch };
+}
+
 /** Starts a worker for one new task, in its own branch and worktree. */
 export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTaskInput): Promise<string> {
   const project = projectNamed(deps, ownProject(ctx));
@@ -49,16 +59,7 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
       // A worktree's commits land in the main repo's .git folder, outside the worktree.
       writableDirs: [`${project.repo}/.git`],
     },
-    (terminal) => ({
-      kind: "task_created",
-      project: project.name,
-      task,
-      title: input.title,
-      branch,
-      worktree,
-      terminal,
-      spec,
-    }),
+    (terminal) => taskCreated(project, { task, title: input.title, branch, worktree, terminal, spec }),
   );
   return `Started ${task} "${input.title}" on ${spec.harness} (${spec.model}) in terminal ${terminal}, branch ${branch}. End your turn; its report arrives as a [brigade] message.`;
 }

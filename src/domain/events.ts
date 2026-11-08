@@ -20,7 +20,19 @@ export type BrigadeEvent =
       readonly worktree: string;
       readonly terminal: string;
       readonly spec: AgentSpec;
+      /** The project's repo and base branch when the task started (phase 2 on; older events lack them). */
+      readonly repo?: string;
+      readonly baseBranch?: string;
     }
+  | {
+      readonly at: string;
+      readonly kind: "project_added";
+      readonly project: string;
+      readonly repo: string;
+      readonly baseBranch: string;
+      readonly github: string | null;
+    }
+  | { readonly at: string; readonly kind: "project_changed"; readonly project: string; readonly baseBranch: string }
   | { readonly at: string; readonly kind: "task_finished"; readonly task: string; readonly summary: string }
   | { readonly at: string; readonly kind: "task_asked"; readonly task: string; readonly question: string }
   | {

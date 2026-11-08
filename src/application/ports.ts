@@ -108,6 +108,36 @@ export interface Worktrees {
   commit(target: CommitTarget, message: string): Promise<Commit | null>;
 }
 
+/** What brigade needs to know about a folder before it becomes a project. */
+export interface RepoFacts {
+  /** The folder is the top of its git repo, not a folder inside one. */
+  readonly isRoot: boolean;
+  readonly currentBranch: string | null;
+  /** The fetch URL of `origin`, or null without one. */
+  readonly origin: string | null;
+}
+
+export interface FoundRepo {
+  readonly name: string;
+  readonly path: string;
+}
+
+/** Port to the owner's local git repos (read-only). */
+export interface Repos {
+  /** Git repos under `roots` whose folder name matches `name`, within fixed limits. */
+  find(roots: readonly string[], name: string): Promise<FoundRepo[]>;
+  /** Facts about a folder, or null when it is not a git repo. */
+  inspect(folder: string): Promise<RepoFacts | null>;
+  hasBranch(folder: string, branch: string): Promise<boolean>;
+}
+
+/** Port to brigade's config file. Every write is serialized across processes and lands whole. */
+export interface ConfigStore {
+  read(): Promise<BrigadeConfig>;
+  /** Applies `change` to the config as it is now, checks the result, and writes it. Returns the new config. */
+  update(change: (config: BrigadeConfig) => BrigadeConfig): Promise<BrigadeConfig>;
+}
+
 export interface Prompts {
   render(role: Role, values: Readonly<Record<string, string>>): Promise<string>;
 }
@@ -130,7 +160,12 @@ export interface LaunchContext {
 }
 
 export interface Deps {
+  /** The config as it was when this tool call started: one snapshot per call. */
   readonly config: BrigadeConfig;
+  readonly configStore: ConfigStore;
+  readonly repos: Repos;
+  /** Where find_repo looks when the config names no repoRoots. */
+  readonly defaultRepoRoots: readonly string[];
   readonly terminals: Terminals;
   readonly harnesses: Harnesses;
   readonly events: EventLog;

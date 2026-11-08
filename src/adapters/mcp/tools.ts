@@ -1,5 +1,6 @@
 import { createTask, reportToCoordinator, sendToTask } from "../../application/captain.ts";
 import { listProjects, listTasks, sendToCaptain } from "../../application/coordinator.ts";
+import { addProject, findRepo, updateProject } from "../../application/projects.ts";
 import type { Deps } from "../../application/ports.ts";
 import { askOwner, commitWork, finishTask, messageCaptain } from "../../application/worker.ts";
 import type { AgentContext, Role } from "../../domain/agent.ts";
@@ -75,6 +76,35 @@ function createTaskTool(deps: Deps, ctx: AgentContext): Tool {
   };
 }
 
+function projectTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
+  return {
+    find_repo: {
+      description: "Find the owner's local git repos whose folder name matches, to add one as a project.",
+      inputSchema: schema(["name"], { name: "Part of the repo's folder name, e.g. harbor." }),
+      run: (a) => findRepo(deps, ctx, { name: str(a, "name") }),
+    },
+    add_project: {
+      description:
+        "Add a local git repo as a project. Its GitHub repo, if origin is on GitHub, is pinned now; pull requests go only there.",
+      inputSchema: schema(["name", "repo"], {
+        name: "Short name: 1-24 of a-z, 0-9 and -.",
+        repo: "Absolute path of the repo's top folder (find_repo finds it).",
+        baseBranch: "Optional: the branch tasks start from; default the repo's current branch.",
+      }),
+      run: (a) => {
+        const baseBranch = optStr(a, "baseBranch");
+        return addProject(deps, ctx, { name: str(a, "name"), repo: str(a, "repo"), ...(baseBranch && { baseBranch }) });
+      },
+    },
+    update_project: {
+      description:
+        "Change the branch a project's new tasks start from. Its repo, GitHub repo and everything else change only by hand.",
+      inputSchema: schema(["name", "baseBranch"], { name: "The project.", baseBranch: "The new base branch." }),
+      run: (a) => updateProject(deps, ctx, { name: str(a, "name"), baseBranch: str(a, "baseBranch") }),
+    },
+  };
+}
+
 function captainTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
   return {
     create_task: createTaskTool(deps, ctx),
@@ -124,15 +154,45 @@ function workerTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
 }
 
 const BY_ROLE: Readonly<Record<Role, (deps: Deps, ctx: AgentContext) => Record<string, Tool>>> = {
-  coordinator: coordinatorTools,
+  coordinator: (deps, ctx) => ({ ...coordinatorTools(deps, ctx), ...projectTools(deps, ctx) }),
   captain: captainTools,
   worker: workerTools,
 };
 
-/** The tools one agent may call: only its own role's. Each `run` reports a bad argument as a rejected promise. */
-export function toolsFor(deps: Deps, ctx: AgentContext): Record<string, Tool> {
+/** Refuses any argument the tool's schema doesn't name (guide C7): a tool never takes settings it doesn't offer. */
+function checkArgs(name: string, tool: Tool, args: Args): void {
+  const props = tool.inputSchema.properties;
+  const known = typeof props === "object" && props !== null ? Object.keys(props) : [];
+  const extra = Object.keys(args).filter((k) => !known.includes(k));
+  if (extra.length) {
+    throw new BrigadeError(
+      `${name} takes only ${known.join(", ") || "no arguments"}; it can't set ${extra.join(", ")}.`,
+    );
+  }
+}
+
+/**
+ * The tools one agent may call: only its own role's. Each call runs on `fresh()`'s deps, a config snapshot read for
+ * that call. Each `run` reports a bad argument as a rejected promise.
+ */
+export function toolsFor(
+  deps: Deps,
+  ctx: AgentContext,
+  fresh: () => Promise<Deps> = () => Promise.resolve(deps),
+): Record<string, Tool> {
   const tools = BY_ROLE[ctx.role](deps, ctx);
   return Object.fromEntries(
-    Object.entries(tools).map(([name, t]) => [name, { ...t, run: async (a: Args) => t.run(a) }]),
+    Object.entries(tools).map(([name, t]) => [
+      name,
+      {
+        ...t,
+        run: async (a: Args) => {
+          checkArgs(name, t, a);
+          const now = BY_ROLE[ctx.role](await fresh(), ctx)[name];
+          if (!now) throw new BrigadeError(`No tool named "${name}".`);
+          return now.run(a);
+        },
+      },
+    ]),
   );
 }

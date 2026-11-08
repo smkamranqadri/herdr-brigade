@@ -35,8 +35,15 @@ git -C "$RUN/repo" init -q -b main
 echo "# demo" > "$RUN/repo/README.md"
 git -C "$RUN/repo" add README.md
 git -C "$RUN/repo" -c user.name=Test -c user.email=test@example.invalid commit -qm init
+# A second repo for project-adding runs, in a folder find_repo searches (repoRoots).
+mkdir -p "$RUN/extra/demo2-site"
+git -C "$RUN/extra/demo2-site" init -q -b main
+echo "# demo2" > "$RUN/extra/demo2-site/README.md"
+git -C "$RUN/extra/demo2-site" add README.md
+git -C "$RUN/extra/demo2-site" -c user.name=Test -c user.email=test@example.invalid commit -qm init
 cat > "$RUN/config.json" <<EOF
 { "owner": "Kamran",
+  "repoRoots": ["$RUN/extra"],
   "roles": { "coordinator": $SPEC, "captain": $SPEC, "worker": $SPEC },
   "projects": [{ "name": "demo", "repo": "$RUN/repo", "baseBranch": "main" }] }
 EOF

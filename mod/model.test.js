@@ -110,6 +110,18 @@ describe("buildModel", () => {
 });
 
 describe("eventText", () => {
+  it("names added and changed projects", () => {
+    expect(
+      eventText({ kind: "project_added", project: "blog", repo: "/r", baseBranch: "main", github: "acme/blog" }),
+    ).toBe("Project blog added (github.com/acme/blog)");
+    expect(eventText({ kind: "project_added", project: "notes", repo: "/r", baseBranch: "main", github: null })).toBe(
+      "Project notes added",
+    );
+    expect(eventText({ kind: "project_changed", project: "blog", baseBranch: "release" })).toBe(
+      "Project blog now starts from release",
+    );
+  });
+
   it("names who sent a message to whom", () => {
     expect(
       eventText({ kind: "message_sent", from: "coordinator", to: "captain", project: "shop", text: "Fix it" }),

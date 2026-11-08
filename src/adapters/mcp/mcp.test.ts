@@ -130,6 +130,9 @@ describe("toolsFor", () => {
       "list_projects",
       "send_to_captain",
       "list_tasks",
+      "find_repo",
+      "add_project",
+      "update_project",
     ]);
     expect(Object.keys(toolsFor(deps, ctx({ role: "captain", project: "shop" })))).toEqual([
       "create_task",
@@ -155,6 +158,27 @@ describe("toolsFor", () => {
       '"prompt" is longer than 20000 characters.',
     );
     expect(f.terminals.launched).toEqual([]);
+  });
+
+  it("refuses an argument the tool doesn't offer, so update_project can't touch the GitHub repo", async () => {
+    const f = fakeDeps();
+    const tools = toolsFor(f.deps, ctx({ role: "coordinator" }));
+    await expect(tools.update_project?.run({ name: "shop", baseBranch: "main", github: "evil/repo" })).rejects.toThrow(
+      "update_project takes only name, baseBranch; it can't set github.",
+    );
+    expect(f.configStore.writes).toBe(0);
+  });
+
+  it("runs each call on a fresh config snapshot", async () => {
+    const f = fakeDeps();
+    const added = {
+      ...f.deps.config,
+      projects: [...f.deps.config.projects, { name: "blog", repo: "/repos/blog", baseBranch: "main", github: null }],
+    };
+    const tools = toolsFor(f.deps, ctx({ role: "coordinator" }), () => Promise.resolve({ ...f.deps, config: added }));
+    expect(await tools.list_projects?.run({})).toBe(
+      "shop: /repos/shop (base branch main)\nblog: /repos/blog (base branch main)",
+    );
   });
 
   it("passes optional create_task choices through", async () => {

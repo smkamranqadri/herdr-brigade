@@ -20,7 +20,7 @@ export interface TaskView {
 
 /** The task an event is about, if any. */
 function taskOf(e: BrigadeEvent): string | null {
-  return e.kind === "agent_started" ? null : e.task;
+  return "task" in e ? e.task : null;
 }
 
 /** One event applied to a task. A follow-up to the worker means it is working again. */

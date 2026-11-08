@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseConfig } from "./config.ts";
+import { parseConfig, serializeConfig, withBaseBranch, withProject, type BrigadeConfig } from "./config.ts";
+import { githubRepoOf } from "./github.ts";
 import { errorCode } from "./errors.ts";
 import { branchFor, deriveTasks } from "./tasks.ts";
 
@@ -11,11 +12,14 @@ const roles = {
 
 describe("parseConfig", () => {
   it("accepts a valid config, with workers on auto and the rest on ask unless it says otherwise", () => {
-    const projects = [{ name: "shop", repo: "/repos/shop", baseBranch: "main" }];
-    expect(parseConfig({ owner: "Sam", roles, projects })).toEqual({
+    const projects = [{ name: "shop", repo: "/repos/shop", baseBranch: "main", github: null }];
+    expect(
+      parseConfig({ owner: "Sam", roles, projects: [{ name: "shop", repo: "/repos/shop", baseBranch: "main" }] }),
+    ).toEqual({
       ok: true,
       value: {
         owner: "Sam",
+        repoRoots: null,
         roles: {
           coordinator: { ...roles.coordinator, permissions: "ask" },
           captain: { ...roles.captain, permissions: "ask" },
@@ -159,5 +163,68 @@ describe("errorCode", () => {
     expect(errorCode(new Error("x"))).toBeUndefined();
     expect(errorCode("ENOENT")).toBeUndefined();
     expect(errorCode(null)).toBeUndefined();
+  });
+});
+
+describe("githubRepoOf", () => {
+  it.each([
+    ["https://github.com/acme/shop.git", "acme/shop"],
+    ["https://github.com/acme/shop", "acme/shop"],
+    ["git@github.com:acme/shop.git", "acme/shop"],
+    ["ssh://git@github.com/acme/shop.git", "acme/shop"],
+    ["https://gitlab.com/acme/shop.git", null],
+    ["https://github.com.evil.io/acme/shop.git", null],
+    ["https://github.com/acme/shop/extra", null],
+    ["/srv/git/shop.git", null],
+  ])("reads %s as %s", (url, repo) => {
+    expect(githubRepoOf(url)).toBe(repo);
+  });
+});
+
+describe("project config", () => {
+  const config: BrigadeConfig = {
+    owner: "Sam",
+    roles: {
+      coordinator: { harness: "claude", model: "m", effort: "low", permissions: "ask" },
+      captain: { harness: "claude", model: "m", effort: "low", permissions: "ask" },
+      worker: { harness: "claude", model: "m", effort: "low", permissions: "auto" },
+    },
+    repoRoots: null,
+    projects: [{ name: "shop", repo: "/repos/shop", baseBranch: "main", github: "acme/shop" }],
+  };
+  const blog = { name: "blog", repo: "/repos/blog", baseBranch: "main", github: null };
+
+  it("adds a project with a valid, unused name and an unused repo", () => {
+    expect(withProject(config, blog).projects.map((p) => p.name)).toEqual(["shop", "blog"]);
+    expect(() => withProject(config, { ...blog, name: "Blog!" })).toThrow('"Blog!" is not a valid project name');
+    expect(() => withProject(config, { ...blog, name: "shop" })).toThrow('A project named "shop" already exists.');
+    expect(() => withProject(config, { ...blog, repo: "/repos/shop" })).toThrow("/repos/shop is already a project.");
+  });
+
+  it("changes only the base branch of the named project", () => {
+    expect(withBaseBranch(config, "shop", "release").projects).toEqual([
+      { ...config.projects[0], baseBranch: "release" },
+    ]);
+    expect(() => withBaseBranch(config, "blog", "x")).toThrow('No project "blog".');
+  });
+
+  it("writes the config back out and reads it again unchanged, leaving null settings out", () => {
+    const json = serializeConfig(withProject(config, blog));
+    expect(json.projects).toEqual([
+      { name: "shop", repo: "/repos/shop", baseBranch: "main", github: "acme/shop" },
+      { name: "blog", repo: "/repos/blog", baseBranch: "main" },
+    ]);
+    expect("repoRoots" in json).toBe(false);
+    expect(parseConfig(json)).toEqual({ ok: true, value: withProject(config, blog) });
+  });
+
+  it("rejects a malformed github repo or repoRoots", () => {
+    const raw = serializeConfig(config);
+    expect(parseConfig({ ...raw, repoRoots: ["relative/path"] })).toEqual({
+      ok: false,
+      errors: ["repoRoots must be a list of absolute paths"],
+    });
+    const bad = { ...raw, projects: [{ name: "shop", repo: "/r", baseBranch: "main", github: "not a repo" }] };
+    expect(parseConfig(bad)).toEqual({ ok: false, errors: ["projects[0].github must be owner/name on GitHub"] });
   });
 });

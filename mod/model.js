@@ -44,7 +44,7 @@ export function deriveTasks(events) {
         note: null,
         updatedAt: at,
       });
-    } else if (e.kind !== "agent_started" && tasks.has(e.task)) {
+    } else if ("task" in e && tasks.has(e.task)) {
       tasks.set(e.task, applyEvent(tasks.get(e.task), e));
     }
   }
@@ -58,6 +58,10 @@ export function eventText(e) {
       return e.role === "captain" ? `Captain for ${e.project} started` : "Coordinator started";
     case "task_created":
       return `${e.project}: started "${e.title}" on ${e.spec.harness}`;
+    case "project_added":
+      return `Project ${e.project} added${e.github ? ` (github.com/${e.github})` : ""}`;
+    case "project_changed":
+      return `Project ${e.project} now starts from ${e.baseBranch}`;
     case "task_committed":
       return `${e.task}: committed ${e.sha.slice(0, 7)}`;
     case "task_finished":

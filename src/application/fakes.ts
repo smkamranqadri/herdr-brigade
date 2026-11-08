@@ -6,6 +6,8 @@ import type {
   Commit,
   CommitTarget,
   Deps,
+  FoundRepo,
+  RepoFacts,
   HarnessLaunchRequest,
   LaunchContext,
   TerminalInfo,
@@ -21,7 +23,8 @@ export const TEST_CONFIG: BrigadeConfig = {
     captain: { harness: "claude", model: "sonnet", effort: "low", permissions: "ask" },
     worker: { harness: "codex", model: "gpt-x", effort: "medium", permissions: "auto" },
   },
-  projects: [{ name: "shop", repo: "/repos/shop", baseBranch: "main" }],
+  repoRoots: null,
+  projects: [{ name: "shop", repo: "/repos/shop", baseBranch: "main", github: "acme/shop" }],
 };
 
 class FakeTerminals {
@@ -99,6 +102,44 @@ class FakeWorktrees {
   }
 }
 
+class FakeConfigStore {
+  config: BrigadeConfig;
+  writes = 0;
+  constructor(config: BrigadeConfig) {
+    this.config = config;
+  }
+  read(): Promise<BrigadeConfig> {
+    return Promise.resolve(this.config);
+  }
+  update(change: (config: BrigadeConfig) => BrigadeConfig): Promise<BrigadeConfig> {
+    try {
+      this.config = change(this.config);
+    } catch (err) {
+      return Promise.reject(err instanceof Error ? err : new Error(String(err)));
+    }
+    this.writes++;
+    return Promise.resolve(this.config);
+  }
+}
+
+/** Folders the fake knows: absent means "not a git repo". */
+class FakeRepos {
+  readonly folders = new Map<string, RepoFacts & { branches: string[] }>();
+  readonly found: FoundRepo[] = [];
+  readonly searches: { roots: readonly string[]; name: string }[] = [];
+  find(roots: readonly string[], name: string): Promise<FoundRepo[]> {
+    this.searches.push({ roots, name });
+    return Promise.resolve(this.found);
+  }
+  inspect(folder: string): Promise<RepoFacts | null> {
+    const f = this.folders.get(folder);
+    return Promise.resolve(f ? { isRoot: f.isRoot, currentBranch: f.currentBranch, origin: f.origin } : null);
+  }
+  hasBranch(folder: string, branch: string): Promise<boolean> {
+    return Promise.resolve(this.folders.get(folder)?.branches.includes(branch) ?? false);
+  }
+}
+
 export interface Fakes {
   readonly deps: Deps;
   readonly terminals: FakeTerminals;
@@ -108,7 +149,20 @@ export interface Fakes {
   readonly mcpContexts: LaunchContext[];
   /** How many events the log held each time a trust prompt was answered. */
   readonly eventsAtTrust: number[];
+  readonly configStore: FakeConfigStore;
+  readonly repos: FakeRepos;
 }
+
+/** The fake ports with no state of their own. */
+const FIXED = {
+  prompts: {
+    render: (role: string, values: Readonly<Record<string, string>>) =>
+      Promise.resolve(`${role} prompt for ${values.OWNER ?? "?"}`),
+  },
+  clock: { now: () => new Date("2026-11-08T10:00:00.000Z") },
+  coordinatorFolder: "/state/coordinator",
+  defaultRepoRoots: ["/home/sam/Repositories"],
+};
 
 export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig } = {}): Fakes {
   const terminals = new FakeTerminals();
@@ -119,22 +173,25 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
   const eventsAtTrust: number[] = [];
   terminals.onAnswerTrust = () => eventsAtTrust.push(events.events.length);
   let ids = 0;
+  const config = options.config ?? TEST_CONFIG;
+  const configStore = new FakeConfigStore(config);
+  const repos = new FakeRepos();
   const deps: Deps = {
-    config: options.config ?? TEST_CONFIG,
+    config,
+    configStore,
+    repos,
     terminals,
     harnesses,
     events,
     worktrees,
-    prompts: { render: (role, values) => Promise.resolve(`${role} prompt for ${values.OWNER ?? "?"}`) },
-    clock: { now: () => new Date("2026-11-08T10:00:00.000Z") },
+    ...FIXED,
     ids: { taskId: () => `task-00000${++ids}` },
     mcpFor: (context) => {
       mcpContexts.push(context);
       return { command: "node", args: ["brigade", "mcp"], env: { ROLE: context.role } };
     },
-    coordinatorFolder: "/state/coordinator",
   };
-  return { deps, terminals, harnesses, events, worktrees, mcpContexts, eventsAtTrust };
+  return { deps, terminals, harnesses, events, worktrees, mcpContexts, eventsAtTrust, configStore, repos };
 }
 
 export const ctx = (over: Partial<AgentContext> & Pick<AgentContext, "role">): AgentContext => ({

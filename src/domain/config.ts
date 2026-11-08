@@ -1,16 +1,22 @@
 import { isEffort, isHarness, isPermission, type AgentSpec, type Permission, type Role } from "./agent.ts";
+import { BrigadeError } from "./errors.ts";
+import { isGithubRepo } from "./github.ts";
 
 export interface ProjectConfig {
   readonly name: string;
   /** Absolute path of the project's git repo. */
   readonly repo: string;
   readonly baseBranch: string;
+  /** The GitHub repo (`owner/name`) this project publishes to, pinned when it was added; null: no publishing. */
+  readonly github: string | null;
 }
 
 export interface BrigadeConfig {
   /** The owner's name, used in prompts. */
   readonly owner: string;
   readonly roles: Readonly<Record<Role, AgentSpec>>;
+  /** Folders find_repo searches; null: the default the edge supplies. */
+  readonly repoRoots: readonly string[] | null;
   readonly projects: readonly ProjectConfig[];
 }
 
@@ -55,12 +61,29 @@ function parseProject(raw: unknown, i: number, errors: string[]): ProjectConfig 
     return null;
   }
   const { name, repo, baseBranch } = raw;
-  const nameOk = typeof name === "string" && NAME.test(name);
-  const repoOk = typeof repo === "string" && repo.startsWith("/");
-  if (!nameOk) errors.push(`${where}.name must be 1-24 of a-z, 0-9 and -`);
-  if (!repoOk) errors.push(`${where}.repo must be an absolute path`);
-  if (!isText(baseBranch)) errors.push(`${where}.baseBranch must be a branch name`);
-  return nameOk && repoOk && isText(baseBranch) ? { name, repo, baseBranch } : null;
+  const github = raw.github ?? null;
+  const checks: readonly [boolean, string][] = [
+    [typeof name === "string" && NAME.test(name), `${where}.name must be 1-24 of a-z, 0-9 and -`],
+    [typeof repo === "string" && repo.startsWith("/"), `${where}.repo must be an absolute path`],
+    [isText(baseBranch), `${where}.baseBranch must be a branch name`],
+    [github === null || isGithubRepo(github), `${where}.github must be owner/name on GitHub`],
+  ];
+  const failed = checks.filter(([ok]) => !ok).map(([, message]) => message);
+  errors.push(...failed);
+  return failed.length === 0 ? asProject(name, repo, baseBranch, github) : null;
+}
+
+/** The checked fields as a project; only called once every check passed. */
+function asProject(name: unknown, repo: unknown, baseBranch: unknown, github: unknown): ProjectConfig | null {
+  const ok = typeof name === "string" && typeof repo === "string" && typeof baseBranch === "string";
+  return ok ? { name, repo, baseBranch, github: isGithubRepo(github) ? github : null } : null;
+}
+
+function parseRepoRoots(raw: unknown, errors: string[]): string[] | null {
+  if (raw === undefined || raw === null) return null;
+  if (Array.isArray(raw) && raw.every((r): r is string => typeof r === "string" && r.startsWith("/"))) return raw;
+  errors.push("repoRoots must be a list of absolute paths");
+  return null;
 }
 
 function parseRoles(raw: unknown, errors: string[]): Record<Role, AgentSpec> | null {
@@ -78,6 +101,7 @@ export function parseConfig(raw: unknown): ParseResult<BrigadeConfig> {
   if (!isObj(raw)) return { ok: false, errors: ["the config must be a JSON object"] };
   if (!isText(raw.owner)) errors.push("owner must be your name");
   const roles = parseRoles(raw.roles, errors);
+  const repoRoots = parseRepoRoots(raw.repoRoots, errors);
   const list = Array.isArray(raw.projects) ? raw.projects : [];
   if (!Array.isArray(raw.projects)) errors.push("projects must be a list");
   const projects = list.flatMap((p: unknown, i) => parseProject(p, i, errors) ?? []);
@@ -85,5 +109,38 @@ export function parseConfig(raw: unknown): ParseResult<BrigadeConfig> {
   const twice = names.filter((n, i) => names.indexOf(n) !== i);
   if (twice.length) errors.push(`project names must be unique: ${[...new Set(twice)].join(", ")}`);
   if (errors.length || !roles || !isText(raw.owner)) return { ok: false, errors };
-  return { ok: true, value: { owner: raw.owner, roles, projects } };
+  return { ok: true, value: { owner: raw.owner, roles, repoRoots, projects } };
+}
+
+/** The config in the shape of the file. Settings that are null are left out. */
+export function serializeConfig(config: BrigadeConfig): Record<string, unknown> {
+  return {
+    owner: config.owner,
+    roles: config.roles,
+    ...(config.repoRoots ? { repoRoots: config.repoRoots } : {}),
+    projects: config.projects.map((p) => ({
+      name: p.name,
+      repo: p.repo,
+      baseBranch: p.baseBranch,
+      ...(p.github ? { github: p.github } : {}),
+    })),
+  };
+}
+
+/** The config with one more project. The name must follow the rules and be unused. */
+export function withProject(config: BrigadeConfig, project: ProjectConfig): BrigadeConfig {
+  if (!NAME.test(project.name))
+    throw new BrigadeError(`"${project.name}" is not a valid project name: use 1-24 of a-z, 0-9 and -.`);
+  if (config.projects.some((p) => p.name === project.name))
+    throw new BrigadeError(`A project named "${project.name}" already exists.`);
+  if (config.projects.some((p) => p.repo === project.repo)) {
+    throw new BrigadeError(`${project.repo} is already a project. One project per repo.`);
+  }
+  return { ...config, projects: [...config.projects, project] };
+}
+
+/** The config with one project's base branch changed. Nothing else about a project changes this way. */
+export function withBaseBranch(config: BrigadeConfig, name: string, baseBranch: string): BrigadeConfig {
+  if (!config.projects.some((p) => p.name === name)) throw new BrigadeError(`No project "${name}".`);
+  return { ...config, projects: config.projects.map((p) => (p.name === name ? { ...p, baseBranch } : p)) };
 }
