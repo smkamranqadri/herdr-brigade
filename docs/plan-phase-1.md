@@ -1,6 +1,6 @@
 # Phase 1 plan
 
-Status: draft, waiting for the owner's approval. Date: 2026-11-08.
+Status: done 2026-11-09. Approved 2026-11-08.
 
 ## Goal
 
@@ -59,7 +59,7 @@ PR tracking and a merge button, project notes and the notes retro, hooks, schedu
 4. Add the Codex and pi adapters, behind contract tests that every adapter passes. **Done 2026-11-09**: each harness ran all three roles end to end (`docs/e2e-runs.md`). Workers commit through a brigade `commit` tool.
 5. Add parallel tasks with worktrees. **Done 2026-11-09**: load tests and two-worker runs on Claude and Codex (`docs/e2e-runs.md`). No code change was needed beyond a regression test.
 6. Add the mod. **Done 2026-11-09**: the Brigade panel, `brigade mod install`, `brigade panel`, a Brigade button beside Automations (`docs/herdr-app.md`), and `brigade start` focuses the Coordinator.
-7. Run the end-to-end check, once for each harness.
+7. Run the end-to-end check, once for each harness. **Done 2026-11-09**: two workers at once on Claude Code, Codex and pi, and the panel showed a run (`docs/e2e-runs.md`); review of steps 4 to 6 closed (`docs/reviews.md`).
 
 ## Structure (guide part 3)
 

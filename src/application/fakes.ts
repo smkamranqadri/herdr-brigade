@@ -4,6 +4,7 @@ import type { BrigadeConfig } from "../domain/config.ts";
 import type { BrigadeEvent } from "../domain/events.ts";
 import type {
   Commit,
+  CommitTarget,
   Deps,
   HarnessLaunchRequest,
   LaunchContext,
@@ -13,7 +14,7 @@ import type {
   TrustPrompt,
 } from "./ports.ts";
 
-const TEST_CONFIG: BrigadeConfig = {
+export const TEST_CONFIG: BrigadeConfig = {
   owner: "Sam",
   roles: {
     coordinator: { harness: "claude", model: "opus", effort: "medium", permissions: "ask" },
@@ -65,8 +66,10 @@ class FakeHarnesses {
   sendFirst = false;
   prepare(req: HarnessLaunchRequest) {
     this.requests.push(req);
+    // Like every real harness, it delivers the first message exactly once: typed in after start, or in argv.
     const sendFirst = this.sendFirst ? req.firstMessage : null;
-    return Promise.resolve({ argv: [req.spec.harness, req.agentId], trust: this.trust, sendFirst });
+    const inArgv = !this.sendFirst && req.firstMessage !== null ? ["--", req.firstMessage] : [];
+    return Promise.resolve({ argv: [req.spec.harness, req.agentId, ...inArgv], trust: this.trust, sendFirst });
   }
 }
 
@@ -83,15 +86,15 @@ class FakeEventLog {
 
 class FakeWorktrees {
   readonly created: { repo: string; baseBranch: string; branch: string }[] = [];
-  readonly commits: { worktree: string; message: string }[] = [];
+  readonly commits: { target: CommitTarget; message: string }[] = [];
   /** What the next commit returns; null means there was nothing to commit. */
   nextCommit: Commit | null = { sha: "abc123def456", files: 1 };
   create(repo: string, baseBranch: string, branch: string): Promise<string> {
     this.created.push({ repo, baseBranch, branch });
     return Promise.resolve(`/worktrees/${branch}`);
   }
-  commit(worktree: string, message: string): Promise<Commit | null> {
-    this.commits.push({ worktree, message });
+  commit(target: CommitTarget, message: string): Promise<Commit | null> {
+    this.commits.push({ target, message });
     return Promise.resolve(this.nextCommit);
   }
 }

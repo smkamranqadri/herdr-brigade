@@ -16,3 +16,16 @@ Each finding was checked against the code before it was fixed. Each fix has a te
 | R6 | suggestion | The suppression count missed casts and config exemptions (guide C11, Q4). | Fixed. It now counts both. Six avoidable casts were removed; the baseline is 9 (4 `JSON.parse` casts at file and `hc` borders, 5 config exemptions). |
 
 The reviewer could not run coverage or the two file-system adapter suites inside its sandbox, and ran no real agents. The implementer ran the full gate and both real-agent runs (`docs/e2e-runs.md`).
+
+## Phase 1, steps 4 to 6 (2026-11-09)
+
+Reviewer: Codex CLI, `gpt-6.1-sol` at medium effort, read-only sandbox, on the diff `cb6362e..fbab81d`, without the implementer's summary. Each finding was checked against the code before it was fixed.
+
+| ID | Severity | Finding | Outcome |
+| --- | --- | --- | --- |
+| R1 | blocking | The `commit` tool trusted whatever git found in the worktree. A worker that switched branch got a commit on that branch, reported as the task branch; one that edited its `.git` file could aim the commit, which runs outside the sandbox, at another repo. | Fixed. Before staging, brigade checks the worktree's top folder, the repo its git folder belongs to, that the git folder is one of that repo's worktrees, and the branch, all against its own records. Then it pins git to that folder. Three rejection tests (switched branch, another repo, a sibling task's worktree). The branch check was mutation-checked; the other three checks overlap, so breaking one alone is still caught by another. |
+| R2 | blocking | `scripts/e2e.sh` could send its test request to the owner's real Coordinator if one started in the same seconds, and an `hc ls` failure fell through. | Fixed. An `hc` failure stops the script; it needs a newly started Coordinator and takes its address from the run's own event log. Checked: with a live `brigade=main` terminal, the script refused and created nothing. |
+| R3 | blocking | The e2e script exited 0 on timeout. | Fixed: it exits 1 with a reason. Not run, because a timeout run costs model usage. |
+| R4 | suggestion | The test fake dropped the first message unless told to type it in. | Fixed: it delivers the message once, in argv or typed in, as the contract requires. Kept as is: the routing-role contract test still uses a containment check, because each harness also has an exact-argv test. |
+
+The reviewer could not run the tests in its read-only sandbox (Vite needs a temp folder) and started no agents. The implementer ran the full gate.

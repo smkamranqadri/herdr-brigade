@@ -91,11 +91,21 @@ export interface Commit {
   readonly files: number;
 }
 
+/** Where a task's commit must land, from brigade's own records, never from the agent. */
+export interface CommitTarget {
+  readonly worktree: string;
+  readonly repo: string;
+  readonly branch: string;
+}
+
 export interface Worktrees {
   /** Creates a new branch from `baseBranch` in its own worktree, and returns the worktree's path. */
   create(repo: string, baseBranch: string, branch: string): Promise<string>;
-  /** Commits every change in the worktree. Returns null when there is nothing to commit. */
-  commit(worktree: string, message: string): Promise<Commit | null>;
+  /**
+   * Commits every change in the task's worktree, after checking it is still that task's worktree of that repo, on
+   * that branch. Returns null when there is nothing to commit.
+   */
+  commit(target: CommitTarget, message: string): Promise<Commit | null>;
 }
 
 export interface Prompts {

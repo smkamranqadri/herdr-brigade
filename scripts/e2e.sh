@@ -22,7 +22,10 @@ case $HARNESS in
   *) echo "harness must be claude, codex or pi" >&2; exit 2 ;;
 esac
 
-if [ -n "$(hc ls --json --label brigade=main | python3 -I -c 'import json,sys; d=json.load(sys.stdin); t=d["terminals"] if isinstance(d,dict) else d; print(len(t) or "")')" ]; then
+# Never touch a real brigade: refuse to run while any brigade agent is live. An hc failure stops the script here.
+running=$(hc ls --json --label brigade=main \
+  | python3 -I -c 'import json,sys; d=json.load(sys.stdin); t=d["terminals"] if isinstance(d,dict) else d; print(len(t))')
+if [ "$running" != 0 ]; then
   echo "brigade agents are already running; remove them first (hc ls --label brigade=main)" >&2
   exit 1
 fi
@@ -40,9 +43,18 @@ EOF
 
 export BRIGADE_CONFIG="$RUN/config.json" BRIGADE_STATE="$RUN/state" BRIGADE_WORKTREES="$RUN/worktrees"
 cd "$APP"
-node src/entrypoints/cli.ts start
-COORD=$(hc ls --json --label brigade=main --label role=coordinator \
-  | python3 -I -c 'import json,sys; d=json.load(sys.stdin); t=d["terminals"] if isinstance(d,dict) else d; print(t[0]["address"])')
+started=$(node src/entrypoints/cli.ts start)
+echo "$started"
+case $started in
+  Started*) ;;
+  *) echo "expected a new Coordinator, not one that was already running" >&2; exit 1 ;;
+esac
+# The Coordinator this run started, from this run's own event log: never one found by a shared label.
+COORD=$(python3 -I -c '
+import json,sys
+events=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+print(next(e["terminal"] for e in events if e["kind"]=="agent_started" and e["role"]=="coordinator"))
+' "$RUN/state/events.jsonl")
 echo "run: $RUN"
 echo "coordinator: $COORD"
 
@@ -67,6 +79,7 @@ fi
 
 EVENTS="$RUN/state/events.jsonl"
 end=$((SECONDS + WAIT_SECONDS))
+finished=no
 while [ $SECONDS -lt $end ]; do
   # Done when enough tasks finished, the Captain reported after the last one, and the log has been quiet for
   # 10 seconds, so a second report that follows soon is recorded too.
@@ -77,7 +90,7 @@ done=[e for e in events if e["kind"] in ("task_finished","task_asked")]
 last=max((e["at"] for e in done), default=None)
 reported=any(e["kind"]=="message_sent" and e.get("to")=="coordinator" and last and e["at"]>=last for e in events)
 sys.exit(0 if len({e["task"] for e in done})>=int(sys.argv[2]) and reported else 1)
-' "$EVENTS" "$EXPECT_TASKS" && [ $(( $(date +%s) - $(stat -c %Y "$EVENTS") )) -ge 10 ]; then break; fi
+' "$EVENTS" "$EXPECT_TASKS" && [ $(( $(date +%s) - $(stat -c %Y "$EVENTS") )) -ge 10 ]; then finished=yes; break; fi
   hc wait "$COORD" --timeout 15 >/dev/null 2>&1 || true
   timeout 3 tail -f /dev/null || true
 done
@@ -89,3 +102,7 @@ for l in open(sys.argv[1]):
   text=e.get("summary") or e.get("question") or e.get("text") or e.get("message") or ""
   print(e["at"][11:19], e["kind"], e.get("terminal",""), e.get("sha",""), text[:160])
 ' "$EVENTS"
+if [ "$finished" != yes ]; then
+  echo "timed out after ${WAIT_SECONDS}s: the tasks did not all finish and get reported" >&2
+  exit 1
+fi

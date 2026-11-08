@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ctx, fakeDeps } from "./fakes.ts";
+import { ctx, fakeDeps, TEST_CONFIG } from "./fakes.ts";
 import { askOwner, commitWork, finishTask, messageCaptain } from "./worker.ts";
 
 const worker = ctx({ role: "worker", terminal: "t5", project: "shop", task: "task-1", title: "Login", parent: "t3" });
@@ -64,7 +64,12 @@ describe("commitWork", () => {
     expect(await commitWork(f.deps, worker, { message: "Add login" })).toBe(
       "Committed 1 file as abc123def456 on brigade/login-1.",
     );
-    expect(f.worktrees.commits).toEqual([{ worktree: "/worktrees/brigade/login-1", message: "Add login" }]);
+    expect(f.worktrees.commits).toEqual([
+      {
+        target: { worktree: "/worktrees/brigade/login-1", repo: "/repos/shop", branch: "brigade/login-1" },
+        message: "Add login",
+      },
+    ]);
     expect(f.events.events.at(-1)).toEqual({
       kind: "task_committed",
       task: "task-1",
@@ -80,6 +85,15 @@ describe("commitWork", () => {
     f.worktrees.nextCommit = null;
     expect(await commitWork(f.deps, worker, { message: "x" })).toBe("Nothing to commit: your worktree has no changes.");
     expect(f.events.events).toHaveLength(1);
+  });
+
+  it("refuses to commit for a project that is no longer in the config", async () => {
+    const f = fakeDeps({ config: { ...TEST_CONFIG, projects: [] } });
+    f.events.events.push(created);
+    await expect(commitWork(f.deps, worker, { message: "x" })).rejects.toThrow(
+      "Project shop is no longer in the config, so brigade won't commit for it.",
+    );
+    expect(f.worktrees.commits).toEqual([]);
   });
 
   it("refuses a task brigade has no record of, and any agent that is not a worker", async () => {

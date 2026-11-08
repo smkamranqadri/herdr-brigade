@@ -77,12 +77,13 @@ describe("GitWorktrees", () => {
     const folder = await worktrees.create(repo, "main", "brigade/login-1");
     await writeFile(path.join(folder, "login.txt"), "hello\n");
     await writeFile(path.join(folder, "README.md"), "# shop, changed\n");
-    const commit = await worktrees.commit(folder, "Add login");
+    const target = { worktree: folder, repo, branch: "brigade/login-1" };
+    const commit = await worktrees.commit(target, "Add login");
     expect(commit?.files).toBe(2);
     expect(commit?.sha).toBe(git(folder, "rev-parse", "--short=12", "HEAD"));
     expect(git(folder, "log", "-1", "--format=%s")).toBe("Add login");
     expect(git(folder, "status", "--short")).toBe("");
-    expect(await worktrees.commit(folder, "Again")).toBeNull();
+    expect(await worktrees.commit(target, "Again")).toBeNull();
     expect(git(repo, "log", "-1", "--format=%s", "main")).toBe("init");
   });
 
@@ -100,7 +101,9 @@ describe("GitWorktrees", () => {
     const worktrees = new GitWorktrees(await temp("worktrees"));
     const folders = await Promise.all([1, 2, 3, 4].map((i) => worktrees.create(repo, "main", `brigade/task-${i}`)));
     await Promise.all(folders.map((f, i) => writeFile(path.join(f, `file-${i}.txt`), `${i}\n`)));
-    const commits = await Promise.all(folders.map((f, i) => worktrees.commit(f, `Add file ${i}`)));
+    const commits = await Promise.all(
+      folders.map((f, i) => worktrees.commit({ worktree: f, repo, branch: `brigade/task-${i + 1}` }, `Add file ${i}`)),
+    );
     expect(commits.map((c) => c?.files)).toEqual([1, 1, 1, 1]);
     expect(folders.map((f) => git(f, "log", "-1", "--format=%s"))).toEqual([
       "Add file 0",
@@ -108,6 +111,56 @@ describe("GitWorktrees", () => {
       "Add file 2",
       "Add file 3",
     ]);
+  });
+
+  describe("refuses to commit anywhere but the task's own worktree, repo and branch", () => {
+    async function setup() {
+      const base = await temp("guard");
+      const git = (dir: string, ...args: string[]) =>
+        execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim();
+      const makeRepo = async (name: string) => {
+        const dir = path.join(base, name);
+        await mkdir(dir);
+        git(dir, "init", "-q", "-b", "main");
+        git(dir, "config", "user.name", "Test");
+        git(dir, "config", "user.email", "test@example.invalid");
+        await writeFile(path.join(dir, "README.md"), `# ${name}\n`);
+        git(dir, "add", "README.md");
+        git(dir, "commit", "-q", "-m", "init");
+        return dir;
+      };
+      const repo = await makeRepo("shop");
+      const other = await makeRepo("other");
+      const worktrees = new GitWorktrees(path.join(base, "worktrees"));
+      const mine = await worktrees.create(repo, "main", "brigade/mine-1");
+      const sibling = await worktrees.create(repo, "main", "brigade/sibling-2");
+      await writeFile(path.join(mine, "work.txt"), "work\n");
+      return { git, repo, other, worktrees, mine, sibling, target: { worktree: mine, repo, branch: "brigade/mine-1" } };
+    }
+
+    it("when the worker switched to another branch", async () => {
+      const s = await setup();
+      s.git(s.mine, "switch", "-q", "-c", "investigate");
+      await expect(s.worktrees.commit(s.target, "x")).rejects.toThrow("it is on investigate, not brigade/mine-1");
+      expect(s.git(s.mine, "log", "-1", "--format=%s")).toBe("init");
+    });
+
+    it("when the worktree's .git file points at another repo", async () => {
+      const s = await setup();
+      await writeFile(path.join(s.mine, ".git"), `gitdir: ${path.join(s.other, ".git")}\n`);
+      await expect(s.worktrees.commit(s.target, "x")).rejects.toThrow(
+        "Brigade won't commit: this is no longer the task's worktree",
+      );
+      expect(s.git(s.other, "log", "--format=%s")).toBe("init");
+    });
+
+    it("when the worktree's .git file points at another task's worktree", async () => {
+      const s = await setup();
+      const siblingGitDir = s.git(s.sibling, "rev-parse", "--absolute-git-dir");
+      await writeFile(path.join(s.mine, ".git"), `gitdir: ${siblingGitDir}\n`);
+      await expect(s.worktrees.commit(s.target, "x")).rejects.toThrow("it is on brigade/sibling-2, not brigade/mine-1");
+      expect(s.git(s.sibling, "log", "-1", "--format=%s")).toBe("init");
+    });
   });
 
   it("fails with git's own message when the base branch is missing", async () => {

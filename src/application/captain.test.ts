@@ -23,7 +23,7 @@ describe("createTask", () => {
         title: "Fix the login bug",
       },
       parent: "t3",
-      argv: ["codex", "bg-task-000001"],
+      argv: ["codex", "bg-task-000001", "--", "Fix it."],
     });
     expect(f.harnesses.requests[0]?.firstMessage).toBe("Fix it.");
     expect(f.harnesses.requests[0]?.writableDirs).toEqual(["/repos/shop/.git"]);
