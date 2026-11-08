@@ -6,15 +6,18 @@ import path from "node:path";
 import { listTasks, startCoordinator } from "../application/coordinator.ts";
 import { findTerminals } from "../application/launch.ts";
 import { errorCode } from "../domain/errors.ts";
+import { HerdrApp, herdrAppRunner, installMod } from "../adapters/herdrApp/herdrApp.ts";
 import { serve } from "../adapters/mcp/protocol.ts";
 import { toolsFor } from "../adapters/mcp/tools.ts";
 import { buildDeps, ConfigProblem, loadConfig } from "./bootstrap.ts";
 import { readAgentContext, readPaths, type Paths } from "./settings.ts";
 
-const USAGE = `brigade init     write a starter config
-brigade start    start the Coordinator (once)
-brigade status   list the brigade's agents and tasks
-brigade mcp      the MCP server each agent starts (not for people)`;
+const USAGE = `brigade init          write a starter config
+brigade start         start the Coordinator (once) and open it in herdr-app
+brigade status        list the brigade's agents and tasks
+brigade panel         open or close the Brigade panel as a window
+brigade mod install   install the Brigade panel into herdr-app
+brigade mcp           the MCP server each agent starts (not for people)`;
 
 const STARTER = (owner: string) => ({
   owner,
@@ -37,12 +40,35 @@ async function init(paths: Paths): Promise<string> {
   return `Wrote ${paths.configFile}. Add your projects to it, then run "brigade start".`;
 }
 
+function herdrApp(paths: Paths): HerdrApp {
+  if (!paths.herdrApp) throw new ConfigProblem("herdr-app is not on PATH. Install Herdr's window first.");
+  return new HerdrApp(herdrAppRunner(paths.herdrApp));
+}
+
 async function start(paths: Paths): Promise<string> {
   const deps = buildDeps(await loadConfig(paths.configFile), paths);
   await mkdir(deps.coordinatorFolder, { recursive: true });
   const { address, started } = await startCoordinator(deps);
   const verb = started ? "Started" : "Already running:";
-  return `${verb} the Coordinator in terminal ${address}. Open it from Herdr's agent list, or run: hc attach ${address}`;
+  const where = `${verb} the Coordinator in terminal ${address}.`;
+  if (!paths.herdrApp) return `${where} Open it with: hc attach ${address}`;
+  try {
+    await herdrApp(paths).focus(address);
+    return `${where} It is open in herdr-app: type to it there.`;
+  } catch (err) {
+    return `${where} Couldn't open it in herdr-app (${err instanceof Error ? err.message : String(err)}). Click it in the Agents sidebar, or run: hc attach ${address}`;
+  }
+}
+
+async function panel(paths: Paths): Promise<string> {
+  await herdrApp(paths).openPanel();
+  return "Toggled the Brigade panel window.";
+}
+
+async function modInstall(paths: Paths): Promise<string> {
+  const target = await installMod(paths.modSource, paths.herdrAppHome, paths.stateDir);
+  const check = await herdrApp(paths).check(target);
+  return `Installed the Brigade panel in ${target}.\n${check}`;
 }
 
 async function status(paths: Paths): Promise<string> {
@@ -67,7 +93,11 @@ async function main(command: string | undefined): Promise<number> {
     await mcp(paths);
     return 0;
   }
-  const run = { init, start, status }[command ?? ""];
+  if (command === "mod" && process.argv[3] === "install") {
+    console.log(await modInstall(paths));
+    return 0;
+  }
+  const run = { init, start, status, panel }[command ?? ""];
   if (!run) {
     console.log(USAGE);
     return command ? 2 : 0;

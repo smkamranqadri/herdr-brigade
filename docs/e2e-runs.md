@@ -87,3 +87,13 @@ Then `EXPECT_TASKS=2 scripts/e2e.sh <harness> "in demo do two separate tasks in 
 | --- | --- | --- | --- |
 | Claude Code (`claude-sonnet-5-5`, low) | 51 s | `522ff99` alpha, `29e2382` beta | Two branches, one file each, exact bytes, clean worktrees, `main` unchanged. The Captain received both reports and sent one combined report. |
 | Codex (`gpt-6.1-terra`, low) | 75 s | `d29fa6a` alpha, `c6584ec` beta | Same checks. The beta report reached the Captain while it was still sending the alpha one; it reported each, and the Coordinator received both. |
+
+## 2026-11-09: phase 1 step 6, the Brigade panel
+
+A real two-task Claude run (red.txt and blue.txt, 52 s, both committed), then the panel opened from the new Brigade button and checked in a screenshot:
+
+- It showed the Coordinator, the demo project's Captain, both tasks as finished with their notes, and the latest 8 events, from the run's own state.
+- The first screenshot showed the header too cramped for the 368 px panel ("Brigade0 working", "2 finished" cut off). The counts moved to a second line, and a second screenshot confirmed the fix.
+- `herdr-app check` passed for the mod and for the edited `auto-tabs`, and `herdr-app status` showed no errors.
+
+Not checked by eye: `brigade start` reported "It is open in herdr-app", and `herdr-app do agent.focus` returned `ok`. The owner was working in another space at the time, and the screenshot showed their own session. The view was not switched again to check.

@@ -22,7 +22,7 @@ npm run gate                    # test: format, lint, types, layer rules, unused
 npm run e2e -- codex "<request>" # a real run on one harness (claude, codex or pi); uses model usage
 ```
 
-`npm run brigade -- status` lists the brigade's agents and tasks. The plan is in `docs/plan-phase-1.md`, real-agent runs are in `docs/e2e-runs.md`, and agent rules are in `AGENTS.md`.
+`npm run brigade -- status` lists the brigade's agents and tasks. The Brigade panel for herdr-app: `npm run brigade -- mod install`, then see `docs/herdr-app.md`. The plan is in `docs/plan-phase-1.md`, real-agent runs are in `docs/e2e-runs.md`, and agent rules are in `AGENTS.md`.
 
 ## Status: proof of concept
 

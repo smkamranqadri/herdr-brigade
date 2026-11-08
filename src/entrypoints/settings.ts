@@ -29,6 +29,12 @@ export interface Paths {
   /** The pi extension that registers brigade's MCP server for one pi session. */
   readonly piExtension: string;
   readonly worktreesRoot: string;
+  /** herdr-app's home folder (its mods live in mods/). */
+  readonly herdrAppHome: string;
+  /** herdr-app on PATH, or null when Herdr's window isn't installed. */
+  readonly herdrApp: string | null;
+  /** The mod's source folder in this repo. */
+  readonly modSource: string;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -62,6 +68,9 @@ export function readPaths(env: Env): Paths {
     promptsDir: path.join(ROOT, "prompts"),
     piExtension: path.join(ROOT, "pi-extension", "brigade.ts"),
     worktreesRoot: env[ENV.worktrees] ?? path.join(home, ".herdr", "worktrees"),
+    herdrAppHome: env.HERDR_APP_HOME ?? path.join(home, ".config", "herdr-app"),
+    herdrApp: onPath("herdr-app", env),
+    modSource: path.join(ROOT, "mod"),
   };
 }
 
