@@ -137,7 +137,12 @@ describe("toolsFor", () => {
       "list_tasks",
       "report",
     ]);
-    expect(Object.keys(toolsFor(deps, ctx({ role: "worker" })))).toEqual(["finish", "ask_user", "message_captain"]);
+    expect(Object.keys(toolsFor(deps, ctx({ role: "worker" })))).toEqual([
+      "finish",
+      "ask_user",
+      "commit",
+      "message_captain",
+    ]);
   });
 
   it("validates arguments before calling a use case", async () => {

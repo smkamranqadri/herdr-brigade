@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ctx, fakeDeps } from "./fakes.ts";
-import { askOwner, finishTask, messageCaptain } from "./worker.ts";
+import { askOwner, commitWork, finishTask, messageCaptain } from "./worker.ts";
 
 const worker = ctx({ role: "worker", terminal: "t5", project: "shop", task: "task-1", title: "Login", parent: "t3" });
 
@@ -42,5 +42,54 @@ describe("messageCaptain", () => {
       { address: "t3", text: '[brigade] Task task-1 "Login" says: This touches the API too' },
     ]);
     expect(f.events.events[0]).toMatchObject({ kind: "message_sent", from: "worker", to: "captain", task: "task-1" });
+  });
+});
+
+describe("commitWork", () => {
+  const created = {
+    at: "1",
+    kind: "task_created",
+    project: "shop",
+    task: "task-1",
+    title: "Login",
+    branch: "brigade/login-1",
+    worktree: "/worktrees/brigade/login-1",
+    terminal: "t5",
+    spec: { harness: "codex", model: "gpt-x", effort: "low", permissions: "auto" },
+  } as const;
+
+  it("commits in the task's own worktree from the event log, and records the commit", async () => {
+    const f = fakeDeps();
+    f.events.events.push(created);
+    expect(await commitWork(f.deps, worker, { message: "Add login" })).toBe(
+      "Committed 1 file as abc123def456 on brigade/login-1.",
+    );
+    expect(f.worktrees.commits).toEqual([{ worktree: "/worktrees/brigade/login-1", message: "Add login" }]);
+    expect(f.events.events.at(-1)).toEqual({
+      kind: "task_committed",
+      task: "task-1",
+      sha: "abc123def456",
+      message: "Add login",
+      at: "2026-11-08T10:00:00.000Z",
+    });
+  });
+
+  it("says so when there is nothing to commit, and records nothing", async () => {
+    const f = fakeDeps();
+    f.events.events.push(created);
+    f.worktrees.nextCommit = null;
+    expect(await commitWork(f.deps, worker, { message: "x" })).toBe("Nothing to commit: your worktree has no changes.");
+    expect(f.events.events).toHaveLength(1);
+  });
+
+  it("refuses a task brigade has no record of, and any agent that is not a worker", async () => {
+    const f = fakeDeps();
+    await expect(commitWork(f.deps, worker, { message: "x" })).rejects.toThrow(
+      "Brigade has no record of task-1, so it can't find your worktree.",
+    );
+    await expect(commitWork(f.deps, ctx({ role: "captain", project: "shop" }), { message: "x" })).rejects.toThrow(
+      "Only a worker started by a Captain can do this.",
+    );
+    expect(f.worktrees.commits).toEqual([]);
   });
 });

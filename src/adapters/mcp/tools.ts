@@ -1,7 +1,7 @@
 import { createTask, reportToCoordinator, sendToTask } from "../../application/captain.ts";
 import { listProjects, listTasks, sendToCaptain } from "../../application/coordinator.ts";
 import type { Deps } from "../../application/ports.ts";
-import { askOwner, finishTask, messageCaptain } from "../../application/worker.ts";
+import { askOwner, commitWork, finishTask, messageCaptain } from "../../application/worker.ts";
 import type { AgentContext, Role } from "../../domain/agent.ts";
 import { BrigadeError } from "../../domain/errors.ts";
 import type { Tool } from "./protocol.ts";
@@ -107,6 +107,12 @@ function workerTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
       description: "Ask the owner a question you can't settle yourself. Then end your turn.",
       inputSchema: schema(["question"], { question: "One question, with your recommended answer." }),
       run: (a) => askOwner(deps, ctx, { question: str(a, "question") }),
+    },
+    commit: {
+      description:
+        "Commit every change in your worktree on your branch. Use this instead of git commit: it works inside any sandbox.",
+      inputSchema: schema(["message"], { message: "The commit message: a short subject line, then any detail." }),
+      run: (a) => commitWork(deps, ctx, { message: str(a, "message") }),
     },
     message_captain: {
       description:

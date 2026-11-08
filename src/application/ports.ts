@@ -85,9 +85,17 @@ export interface EventLog {
   read(): Promise<BrigadeEvent[]>;
 }
 
+export interface Commit {
+  /** The new commit's short hash. */
+  readonly sha: string;
+  readonly files: number;
+}
+
 export interface Worktrees {
   /** Creates a new branch from `baseBranch` in its own worktree, and returns the worktree's path. */
   create(repo: string, baseBranch: string, branch: string): Promise<string>;
+  /** Commits every change in the worktree. Returns null when there is nothing to commit. */
+  commit(worktree: string, message: string): Promise<Commit | null>;
 }
 
 export interface Prompts {

@@ -25,6 +25,13 @@ export type BrigadeEvent =
   | { readonly at: string; readonly kind: "task_asked"; readonly task: string; readonly question: string }
   | {
       readonly at: string;
+      readonly kind: "task_committed";
+      readonly task: string;
+      readonly sha: string;
+      readonly message: string;
+    }
+  | {
+      readonly at: string;
       readonly kind: "message_sent";
       readonly from: Role;
       readonly to: Role;

@@ -1,5 +1,6 @@
 import type { AgentContext } from "../domain/agent.ts";
 import { BrigadeError } from "../domain/errors.ts";
+import { deriveTasks } from "../domain/tasks.ts";
 import { record } from "./launch.ts";
 import type { Deps } from "./ports.ts";
 
@@ -47,4 +48,15 @@ export async function messageCaptain(deps: Deps, ctx: AgentContext, input: { tex
     text: input.text,
   });
   return "Sent to your Captain. Carry on; any reply arrives as a later message.";
+}
+
+/** Commits the worker's changes in its own worktree, found from the event log, never from the agent's input. */
+export async function commitWork(deps: Deps, ctx: AgentContext, input: { message: string }): Promise<string> {
+  const w = identity(ctx);
+  const task = deriveTasks(await deps.events.read()).find((t) => t.id === w.task);
+  if (!task) throw new BrigadeError(`Brigade has no record of ${w.task}, so it can't find your worktree.`);
+  const commit = await deps.worktrees.commit(task.worktree, input.message);
+  if (!commit) return "Nothing to commit: your worktree has no changes.";
+  await record(deps, { kind: "task_committed", task: w.task, sha: commit.sha, message: input.message });
+  return `Committed ${commit.files} file${commit.files === 1 ? "" : "s"} as ${commit.sha} on ${task.branch}.`;
 }

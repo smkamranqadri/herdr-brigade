@@ -62,6 +62,30 @@ describe("GitWorktrees", () => {
     );
   });
 
+  it("commits every change in a worktree, and returns null when there is nothing to commit", async () => {
+    const repo = path.join(await temp("repo"), "shop");
+    await mkdir(repo);
+    const git = (dir: string, ...args: string[]) =>
+      execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim();
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "config", "user.name", "Test");
+    git(repo, "config", "user.email", "test@example.invalid");
+    await writeFile(path.join(repo, "README.md"), "# shop\n");
+    git(repo, "add", "README.md");
+    git(repo, "commit", "-q", "-m", "init");
+    const worktrees = new GitWorktrees(await temp("worktrees"));
+    const folder = await worktrees.create(repo, "main", "brigade/login-1");
+    await writeFile(path.join(folder, "login.txt"), "hello\n");
+    await writeFile(path.join(folder, "README.md"), "# shop, changed\n");
+    const commit = await worktrees.commit(folder, "Add login");
+    expect(commit?.files).toBe(2);
+    expect(commit?.sha).toBe(git(folder, "rev-parse", "--short=12", "HEAD"));
+    expect(git(folder, "log", "-1", "--format=%s")).toBe("Add login");
+    expect(git(folder, "status", "--short")).toBe("");
+    expect(await worktrees.commit(folder, "Again")).toBeNull();
+    expect(git(repo, "log", "-1", "--format=%s", "main")).toBe("init");
+  });
+
   it("fails with git's own message when the base branch is missing", async () => {
     const repo = await temp("empty");
     execFileSync("git", ["-C", repo, "init", "-q", "-b", "main"]);

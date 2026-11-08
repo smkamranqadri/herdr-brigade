@@ -3,6 +3,7 @@ import type { AgentContext } from "../domain/agent.ts";
 import type { BrigadeConfig } from "../domain/config.ts";
 import type { BrigadeEvent } from "../domain/events.ts";
 import type {
+  Commit,
   Deps,
   HarnessLaunchRequest,
   LaunchContext,
@@ -82,9 +83,16 @@ class FakeEventLog {
 
 class FakeWorktrees {
   readonly created: { repo: string; baseBranch: string; branch: string }[] = [];
+  readonly commits: { worktree: string; message: string }[] = [];
+  /** What the next commit returns; null means there was nothing to commit. */
+  nextCommit: Commit | null = { sha: "abc123def456", files: 1 };
   create(repo: string, baseBranch: string, branch: string): Promise<string> {
     this.created.push({ repo, baseBranch, branch });
     return Promise.resolve(`/worktrees/${branch}`);
+  }
+  commit(worktree: string, message: string): Promise<Commit | null> {
+    this.commits.push({ worktree, message });
+    return Promise.resolve(this.nextCommit);
   }
 }
 
