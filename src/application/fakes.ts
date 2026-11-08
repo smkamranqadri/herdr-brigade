@@ -1,6 +1,6 @@
 // In-memory fakes of every port, for tests (guide A4, T2).
 import type { AgentContext } from "../domain/agent.ts";
-import type { BrigadeConfig } from "../domain/config.ts";
+import { checkedChange, type BrigadeConfig } from "../domain/config.ts";
 import type { BrigadeEvent } from "../domain/events.ts";
 import type {
   Commit,
@@ -120,7 +120,7 @@ class FakeConfigStore {
   }
   update(change: (config: BrigadeConfig) => BrigadeConfig): Promise<BrigadeConfig> {
     try {
-      this.config = change(this.config);
+      this.config = checkedChange(this.config, change).config;
     } catch (err) {
       return Promise.reject(err instanceof Error ? err : new Error(String(err)));
     }

@@ -116,3 +116,15 @@ describe("findRepo", () => {
     );
   });
 });
+
+describe("the fake config store", () => {
+  it("refuses a change that would break the config, as the file store does, and keeps the old config", async () => {
+    const f = fakeDeps();
+    const before = f.configStore.config;
+    await expect(f.configStore.update((c) => ({ ...c, owner: "" }))).rejects.toThrow(
+      "That change would break the config:\n- owner must be your name",
+    );
+    expect(f.configStore.config).toBe(before);
+    expect(f.configStore.writes).toBe(0);
+  });
+});

@@ -127,6 +127,17 @@ export function serializeConfig(config: BrigadeConfig): Record<string, unknown> 
   };
 }
 
+/** The changed config, checked by the same rules as the file. Throws, naming every problem, if it would break. */
+export function checkedChange(
+  config: BrigadeConfig,
+  change: (config: BrigadeConfig) => BrigadeConfig,
+): { config: BrigadeConfig; json: Record<string, unknown> } {
+  const json = serializeConfig(change(config));
+  const parsed = parseConfig(json);
+  if (!parsed.ok) throw new BrigadeError(`That change would break the config:\n- ${parsed.errors.join("\n- ")}`);
+  return { config: parsed.value, json };
+}
+
 /** The config with one more project. The name must follow the rules and be unused. */
 export function withProject(config: BrigadeConfig, project: ProjectConfig): BrigadeConfig {
   if (!NAME.test(project.name))
