@@ -81,7 +81,7 @@ Each step is a thin slice through every layer with its tests (guide W4), the gat
 
 1. **Config store, lock and project tools** (Part 1). **Done 2026-11-09** (`afd93e7`, `docs/e2e-runs.md`). Real check on Claude: the dictated request "add a project called demo2 at <path>, then add hello.txt there" adds the project and finishes the task.
 2. **Notes** (Part 2). **Done 2026-11-09** (`456706a` and the prompt fix after it, `docs/e2e-runs.md`). Real check: the owner says "remember: in demo, designs use little text and lots of white space". The note is saved, and the next task's worker prompt contains it. A worker's suggestion goes through the retro. A second run asks the Captain to note a code convention; it should start a task for `AGENTS.md` instead.
-3. **Pull requests** (Part 3). First local adapter tests, then real checks on each harness against the GitHub test repo (owner's decision 3).
+3. **Pull requests** (Part 3). **Done 2026-11-09** (`75db161`, `docs/e2e-runs.md`). First local adapter tests, then real checks on each harness against the GitHub test repo (owner's decision 3).
 4. **Phase 1 gaps** (Part 4).
 5. **Review and final runs:** a fresh code review of steps 1 to 4 (Codex `gpt-6.1-sol`, medium, read-only), then a run on each harness that uses all three parts.
 

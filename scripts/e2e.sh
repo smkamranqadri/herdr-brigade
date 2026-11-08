@@ -2,6 +2,7 @@
 # End-to-end run with real agents (guide T12: not part of the gate; it costs model usage and needs hc).
 # Usage: scripts/e2e.sh <claude|codex|pi> "<request as the owner would type it>"
 # EXPECT_TASKS=n waits for n tasks to finish (default 1), then for the Captain's report after the last one.
+# GITHUB_REPO=owner/name clones that GitHub repo as the demo project and pins it, for pull-request runs.
 # Each run gets a fresh repo, config, state folder and worktrees under ~/.local/state/herdr-brigade-e2e: outside any
 # repo, so no agent picks up another project's AGENTS.md or package.json, and kept across restarts (unlike /tmp).
 # It starts the Coordinator, sends the request, waits for the worker's finish (or question) and the Captain's
@@ -30,11 +31,20 @@ if [ "$running" != 0 ]; then
   exit 1
 fi
 
-mkdir -p "$RUN/repo" "$RUN/state" "$RUN/worktrees"
-git -C "$RUN/repo" init -q -b main
-echo "# demo" > "$RUN/repo/README.md"
-git -C "$RUN/repo" add README.md
-git -C "$RUN/repo" -c user.name=Test -c user.email=test@example.invalid commit -qm init
+mkdir -p "$RUN/state" "$RUN/worktrees"
+GITHUB_FIELD=""
+if [ -n "${GITHUB_REPO:-}" ]; then
+  # A fresh clone, so origin is the GitHub repo. Check git can reach it before any agent starts.
+  GIT_TERMINAL_PROMPT=0 git clone -q "https://github.com/$GITHUB_REPO.git" "$RUN/repo"
+  GIT_TERMINAL_PROMPT=0 git -C "$RUN/repo" push --dry-run -q origin HEAD:refs/heads/brigade-e2e-access-check
+  GITHUB_FIELD=", \"github\": \"$GITHUB_REPO\""
+else
+  mkdir -p "$RUN/repo"
+  git -C "$RUN/repo" init -q -b main
+  echo "# demo" > "$RUN/repo/README.md"
+  git -C "$RUN/repo" add README.md
+  git -C "$RUN/repo" -c user.name=Test -c user.email=test@example.invalid commit -qm init
+fi
 # A second repo for project-adding runs, in a folder find_repo searches (repoRoots).
 mkdir -p "$RUN/extra/demo2-site"
 git -C "$RUN/extra/demo2-site" init -q -b main
@@ -45,7 +55,7 @@ cat > "$RUN/config.json" <<EOF
 { "owner": "Kamran",
   "repoRoots": ["$RUN/extra"],
   "roles": { "coordinator": $SPEC, "captain": $SPEC, "worker": $SPEC },
-  "projects": [{ "name": "demo", "repo": "$RUN/repo", "baseBranch": "main" }] }
+  "projects": [{ "name": "demo", "repo": "$RUN/repo", "baseBranch": "main"$(printf '%b' "$GITHUB_FIELD") }] }
 EOF
 
 export BRIGADE_CONFIG="$RUN/config.json" BRIGADE_STATE="$RUN/state" BRIGADE_WORKTREES="$RUN/worktrees"

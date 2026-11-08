@@ -127,3 +127,20 @@ Three Claude runs (`claude-sonnet-5-5`, low):
 | C | "… add colors.txt … the worker should also suggest a note that the brand color is 0a7f5c" | **First try failed:** the Coordinator told the Captain to wait for the owner's approval, so the suggestion stayed open. The prompts now say the Captain settles suggestions itself, and the owner never approves them (Box Yard's rule too). **Second try:** suggested at 23:07:42, accepted by the Captain at 23:07:46 with a reason, and reported. |
 
 Not yet looked at: the panel's new note counts. That look is planned in step 5.
+
+## 2026-11-09: phase 2 step 3, pull requests on GitHub
+
+The test repo is the private `smkamranqadri/brigade-e2e-sandbox`, created for this with the owner's approval and seeded at `ab99ed8` on `main`. `GITHUB_REPO=smkamranqadri/brigade-e2e-sandbox scripts/e2e.sh <harness> "in demo add <harness>-<time>.txt with the single line hello from <harness>, then open a pull request for it"`. The script clones the repo, pins it as the project's `github`, and checks git access with `git push --dry-run` before any agent starts.
+
+| Harness | PR | Checked on GitHub with `gh pr view` |
+| --- | --- | --- |
+| Claude Code (`claude-sonnet-5-5`, low) | #1 | OPEN, task branch → `main`, head `3b4ff08` = the worktree's commit, 1 file |
+| Codex (`gpt-6.1-terra`, low), sandboxed | #2 | OPEN, head `95c16ad` = the worktree's commit, 1 file. The push ran outside Codex's sandbox. |
+| pi (`openai/gpt-6.1-sol`, low) | #3 | OPEN, head `a2b7c59` = the worktree's commit, 1 file (pi dropped its first Enter again; the script pressed it) |
+
+Then, with the real adapters and no agents:
+
+- **Live state:** PR #1 was closed on GitHub. Brigade's `list_tasks` then reported "PR #1 closed, checked just now" and recorded `pr_state`.
+- **Refusal:** `create_pull_request` for that task refused: "PR #1 … is closed. Its branch is finished: the work needs a new task." The branch stayed deleted on GitHub.
+
+Cleanup: PRs #1–#3 are closed with a comment, and their branches are deleted. The repo has no open PRs.
