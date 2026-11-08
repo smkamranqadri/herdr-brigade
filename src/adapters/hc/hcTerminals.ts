@@ -42,12 +42,12 @@ interface HcTerminalJson {
   address: string;
   name?: string;
   status?: string | { state?: string } | null;
-  turn?: unknown;
 }
 
-function statusWord(status: HcTerminalJson["status"]): string | null {
+function statusWord(status: unknown): string | null {
   if (typeof status === "string") return status;
-  return status?.state ?? null;
+  const state = typeof status === "object" && status !== null && "state" in status ? status.state : null;
+  return typeof state === "string" ? state : null;
 }
 
 /** The next key for a trust prompt on this screen: Enter on the "yes" choice, Down anywhere else. */
@@ -153,8 +153,10 @@ export class HcTerminals implements Terminals {
 
   /** The agent's turn number and whether it is working right now. */
   private async info(address: string): Promise<{ turn: number; working: boolean }> {
-    const got = JSON.parse(await this.run(["get", address, "--json"])) as Pick<HcTerminalJson, "status" | "turn">;
-    return { turn: typeof got.turn === "number" ? got.turn : 0, working: statusWord(got.status) === "working" };
+    const got: unknown = JSON.parse(await this.run(["get", address, "--json"]));
+    if (typeof got !== "object" || got === null) return { turn: 0, working: false };
+    const turn = "turn" in got && typeof got.turn === "number" ? got.turn : 0;
+    return { turn, working: "status" in got && statusWord(got.status) === "working" };
   }
 
   // `hc ls --json` leaves labels out of its output, so hc does the matching.
