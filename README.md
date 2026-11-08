@@ -12,6 +12,15 @@ The roles follow a kitchen brigade:
 
 The ideas come from Box Yard (AgentSystemLabs/box-yard). The code is our own (guide rule D8).
 
+## Development
+
+```sh
+mise install && npm ci   # set up: the pinned Node 22.23.3, the dev tools and the pre-commit hook
+npm run gate             # test: format, lint, types, layer rules, unused code, suppressions, audit, tests
+```
+
+The `brigade` command arrives in phase 1, step 3. See `docs/plan-phase-1.md`. Agent rules are in `AGENTS.md`.
+
 ## Status: proof of concept
 
 `poc/` is throwaway code. It tests whether the design works in herdr-app before phase 1 starts.
