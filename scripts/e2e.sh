@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end run with real agents (guide T12: not part of the gate; it costs model usage and needs hc).
 # Usage: scripts/e2e.sh <claude|codex|pi> "<request as the owner would type it>"
+# EXPECT_TASKS=n waits for n tasks to finish (default 1), then for the Captain's report after the last one.
 # Each run gets a fresh repo, config, state folder and worktrees under ~/.local/state/herdr-brigade-e2e: outside any
 # repo, so no agent picks up another project's AGENTS.md or package.json, and kept across restarts (unlike /tmp).
 # It starts the Coordinator, sends the request, waits for the worker's finish (or question) and the Captain's
@@ -12,6 +13,7 @@ REQUEST=${2:?request text}
 APP=$(cd "$(dirname "$0")/.." && pwd)
 RUN="${BRIGADE_E2E_DIR:-$HOME/.local/state/herdr-brigade-e2e}/run-$HARNESS-$(date +%Y%m%d-%H%M%S)"
 WAIT_SECONDS=${WAIT_SECONDS:-540}
+EXPECT_TASKS=${EXPECT_TASKS:-1}
 
 case $HARNESS in
   claude) SPEC='{"harness":"claude","model":"claude-sonnet-5-5","effort":"low"}' ;;
@@ -66,8 +68,14 @@ fi
 EVENTS="$RUN/state/events.jsonl"
 end=$((SECONDS + WAIT_SECONDS))
 while [ $SECONDS -lt $end ]; do
-  if [ -f "$EVENTS" ] && grep -q -E '"kind":"task_(finished|asked)"' "$EVENTS" \
-     && grep -q '"from":"captain","to":"coordinator"' "$EVENTS"; then break; fi
+  if [ -f "$EVENTS" ] && python3 -I -c '
+import json,sys
+events=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+done=[e for e in events if e["kind"] in ("task_finished","task_asked")]
+last=max((e["at"] for e in done), default=None)
+reported=any(e["kind"]=="message_sent" and e.get("to")=="coordinator" and last and e["at"]>=last for e in events)
+sys.exit(0 if len({e["task"] for e in done})>=int(sys.argv[2]) and reported else 1)
+' "$EVENTS" "$EXPECT_TASKS"; then break; fi
   hc wait "$COORD" --timeout 15 >/dev/null 2>&1 || true
   timeout 3 tail -f /dev/null || true
 done

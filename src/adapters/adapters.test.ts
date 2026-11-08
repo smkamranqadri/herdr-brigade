@@ -86,6 +86,30 @@ describe("GitWorktrees", () => {
     expect(git(repo, "log", "-1", "--format=%s", "main")).toBe("init");
   });
 
+  it("creates worktrees and commits in them in parallel without lock errors", async () => {
+    const repo = path.join(await temp("repo"), "shop");
+    await mkdir(repo);
+    const git = (dir: string, ...args: string[]) =>
+      execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim();
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "config", "user.name", "Test");
+    git(repo, "config", "user.email", "test@example.invalid");
+    await writeFile(path.join(repo, "README.md"), "# shop\n");
+    git(repo, "add", "README.md");
+    git(repo, "commit", "-q", "-m", "init");
+    const worktrees = new GitWorktrees(await temp("worktrees"));
+    const folders = await Promise.all([1, 2, 3, 4].map((i) => worktrees.create(repo, "main", `brigade/task-${i}`)));
+    await Promise.all(folders.map((f, i) => writeFile(path.join(f, `file-${i}.txt`), `${i}\n`)));
+    const commits = await Promise.all(folders.map((f, i) => worktrees.commit(f, `Add file ${i}`)));
+    expect(commits.map((c) => c?.files)).toEqual([1, 1, 1, 1]);
+    expect(folders.map((f) => git(f, "log", "-1", "--format=%s"))).toEqual([
+      "Add file 0",
+      "Add file 1",
+      "Add file 2",
+      "Add file 3",
+    ]);
+  });
+
   it("fails with git's own message when the base branch is missing", async () => {
     const repo = await temp("empty");
     execFileSync("git", ["-C", repo, "init", "-q", "-b", "main"]);

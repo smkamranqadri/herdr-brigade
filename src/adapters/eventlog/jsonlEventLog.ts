@@ -17,6 +17,9 @@ const toStderr: BadLineReporter = (n, line) => {
  * The event log as one JSON line per event. Each agent's MCP server appends to the same file. Each append is one
  * small write to a file opened for appending, which the local file system keeps whole; a crash can still leave a
  * fragment at the end, so an append that finds one starts on a new line, and a read skips damaged lines.
+ * With many writers, that check can catch another append half-written and add a blank line. Reads skip blank lines,
+ * and the extra newline goes before this event's own line, so it never splits an event. 8 processes appending 2,400
+ * events at once lost none (2026-11-09).
  */
 export class JsonlEventLog implements EventLog {
   private readonly file: string;

@@ -73,3 +73,17 @@ Found on the way:
 - **Runs inside a repo pick up its rules.** The first pi run sat under brigade's own folder: its agents loaded brigade's `AGENTS.md`, and the worker ran brigade's `npm run gate`. Runs now live outside any repo.
 - **pi can drop the Enter of a message sent right after it starts.** The pasted request stayed in pi's input box until Enter was pressed again. `scripts/e2e.sh` now presses Enter again when no turn starts. Brigade itself gives pi its first message on the command line; a follow-up sent in pi's first seconds could still hit this (not seen yet).
 - **Two machine restarts** (2026-11-08 23:08 and 2026-11-09 01:32) cleared `/tmp` and cut off two runs. That is another reason the runs no longer live in `/tmp`.
+
+## 2026-11-09: phase 1 step 5, two workers at once
+
+Load tests first, on real git and files:
+
+- 8 `git worktree add` runs and then 8 commits, all in parallel in one repo, 5 times over: 0 errors in 80 operations. A 4-way version is now a regression test.
+- 8 processes appending 300 events each to one event log at once: all 2,400 read back, none damaged. The fragment check added 55 blank lines, which reads skip.
+
+Then `EXPECT_TASKS=2 scripts/e2e.sh <harness> "in demo do two separate tasks in parallel: one adds alpha.txt with the single line alpha, the other adds beta.txt with the single line beta. Each commits on its own task branch, nothing else"`:
+
+| Harness | Time | Commits | Checked by hand |
+| --- | --- | --- | --- |
+| Claude Code (`claude-sonnet-5-5`, low) | 51 s | `522ff99` alpha, `29e2382` beta | Two branches, one file each, exact bytes, clean worktrees, `main` unchanged. The Captain received both reports and sent one combined report. |
+| Codex (`gpt-6.1-terra`, low) | 75 s | `d29fa6a` alpha, `c6584ec` beta | Same checks. The beta report reached the Captain while it was still sending the alpha one; it reported each, and the Coordinator received both. |
