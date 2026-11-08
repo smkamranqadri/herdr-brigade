@@ -2,3 +2,6 @@ poc/.state/
 node_modules/
 .env
 coverage/
+# Written by herdr-app when it checks a mod folder
+mod/gpui-kit.d.ts
+mod/jsconfig.json

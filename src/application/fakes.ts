@@ -7,6 +7,7 @@ import type {
   CommitTarget,
   Deps,
   FoundRepo,
+  PullRequest,
   Ids,
   RepoFacts,
   HarnessLaunchRequest,
@@ -97,6 +98,11 @@ class FakeWorktrees {
     this.created.push({ repo, baseBranch, branch });
     return Promise.resolve(`/worktrees/${branch}`);
   }
+  readonly pushes: { target: CommitTarget; github: string }[] = [];
+  push(target: CommitTarget, github: string): Promise<void> {
+    this.pushes.push({ target, github });
+    return Promise.resolve();
+  }
   commit(target: CommitTarget, message: string): Promise<Commit | null> {
     this.commits.push({ target, message });
     return Promise.resolve(this.nextCommit);
@@ -141,6 +147,44 @@ class FakeRepos {
   }
 }
 
+/** GitHub as a list of PRs, with every call recorded. */
+class FakeGitHub {
+  readonly prs: (PullRequest & { repo: string })[] = [];
+  readonly calls: string[] = [];
+  failViews = false;
+  private next = 41;
+  pullRequestsFor(repo: string, head: string): Promise<PullRequest[]> {
+    this.calls.push(`list ${repo} ${head}`);
+    return Promise.resolve(this.prs.filter((p) => p.repo === repo && p.head === head));
+  }
+  create(repo: string, pr: { head: string; base: string; title: string; body: string }): Promise<PullRequest> {
+    this.calls.push(`create ${repo} ${pr.head}->${pr.base} "${pr.title}"`);
+    const number = ++this.next;
+    const made = {
+      repo,
+      number,
+      url: `https://github.com/${repo}/pull/${number}`,
+      state: "open" as const,
+      head: pr.head,
+      base: pr.base,
+      headSha: "abc",
+      mergedAt: null,
+    };
+    this.prs.push(made);
+    return Promise.resolve(made);
+  }
+  edit(repo: string, num: number, pr: { title: string }): Promise<void> {
+    this.calls.push(`edit ${repo} #${num} "${pr.title}"`);
+    return Promise.resolve();
+  }
+  view(repo: string, num: number): Promise<PullRequest> {
+    this.calls.push(`view ${repo} #${num}`);
+    const pr = this.prs.find((p) => p.repo === repo && p.number === num);
+    if (this.failViews || !pr) return Promise.reject(new Error("gh pr view failed: network"));
+    return Promise.resolve(pr);
+  }
+}
+
 export interface Fakes {
   readonly deps: Deps;
   readonly terminals: FakeTerminals;
@@ -152,6 +196,7 @@ export interface Fakes {
   readonly eventsAtTrust: number[];
   readonly configStore: FakeConfigStore;
   readonly repos: FakeRepos;
+  readonly github: FakeGitHub;
 }
 
 /** Ids that count up across kinds: task-000001, note-000002, … */
@@ -182,10 +227,12 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
   const config = options.config ?? TEST_CONFIG;
   const configStore = new FakeConfigStore(config);
   const repos = new FakeRepos();
+  const github = new FakeGitHub();
   const deps: Deps = {
     config,
     configStore,
     repos,
+    github,
     terminals,
     harnesses,
     events,
@@ -197,7 +244,7 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
       return { command: "node", args: ["brigade", "mcp"], env: { ROLE: context.role } };
     },
   };
-  return { deps, terminals, harnesses, events, worktrees, mcpContexts, eventsAtTrust, configStore, repos };
+  return { deps, terminals, harnesses, events, worktrees, mcpContexts, eventsAtTrust, configStore, repos, github };
 }
 
 export const ctx = (over: Partial<AgentContext> & Pick<AgentContext, "role">): AgentContext => ({

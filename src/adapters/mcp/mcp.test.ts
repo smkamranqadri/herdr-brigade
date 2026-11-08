@@ -150,8 +150,9 @@ describe("toolsFor", () => {
     expect(Object.keys(toolsFor(deps, ctx({ role: "worker" })))).toEqual([
       "finish",
       "ask_user",
-      "commit",
       "message_captain",
+      "commit",
+      "create_pull_request",
       "suggest_note",
       "read_notes",
     ]);

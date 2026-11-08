@@ -2,6 +2,7 @@ import type { AgentSpec, Role } from "./agent.ts";
 
 export type NoteSource = "owner" | "suggestion";
 export type SuggestionOutcome = "accept" | "merge" | "reject";
+export type PrState = "open" | "closed" | "merged";
 
 /** One line of the brigade's event log. `at` is an ISO time from the injected clock. */
 export type BrigadeEvent =
@@ -74,6 +75,26 @@ export type BrigadeEvent =
       readonly note: string | null;
       /** The note's text after an accept or a merge; null for a reject. */
       readonly text: string | null;
+    }
+  | {
+      readonly at: string;
+      readonly kind: "pr_opened";
+      readonly task: string;
+      /** The GitHub repo, owner/name. */
+      readonly repo: string;
+      readonly number: number;
+      readonly url: string;
+      readonly head: string;
+      readonly base: string;
+    }
+  | {
+      readonly at: string;
+      readonly kind: "pr_state";
+      readonly task: string;
+      readonly number: number;
+      readonly state: PrState;
+      readonly headSha: string | null;
+      readonly mergedAt: string | null;
     }
   | { readonly at: string; readonly kind: "task_finished"; readonly task: string; readonly summary: string }
   | { readonly at: string; readonly kind: "task_asked"; readonly task: string; readonly question: string }

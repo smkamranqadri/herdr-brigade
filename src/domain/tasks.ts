@@ -12,6 +12,9 @@ export interface TaskView {
   readonly worktree: string;
   readonly terminal: string;
   readonly spec: AgentSpec;
+  /** The repo and base branch the task started from; null for tasks from before phase 2. */
+  readonly repo: string | null;
+  readonly baseBranch: string | null;
   readonly state: TaskState;
   /** The last summary or question, if any. */
   readonly note: string | null;
@@ -43,6 +46,7 @@ export function deriveTasks(events: readonly BrigadeEvent[]): TaskView[] {
   for (const e of events) {
     if (e.kind === "task_created") {
       const { project, task, title, branch, worktree, terminal, spec, at } = e;
+      const pinned = { repo: e.repo ?? null, baseBranch: e.baseBranch ?? null };
       const view: TaskView = {
         id: task,
         project,
@@ -51,6 +55,7 @@ export function deriveTasks(events: readonly BrigadeEvent[]): TaskView[] {
         worktree,
         terminal,
         spec,
+        ...pinned,
         state: "working",
         note: null,
         updatedAt: at,

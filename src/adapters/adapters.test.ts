@@ -154,6 +154,21 @@ describe("GitWorktrees", () => {
       expect(s.git(s.other, "log", "--format=%s")).toBe("init");
     });
 
+    it("when origin isn't the project's pinned GitHub repo, before pushing anything", async () => {
+      const s = await setup();
+      s.git(s.repo, "remote", "add", "origin", "https://github.com/someone-else/shop.git");
+      await expect(s.worktrees.push(s.target, "acme/shop")).rejects.toThrow(
+        "Brigade won't push: origin is https://github.com/someone-else/shop.git, not github.com/acme/shop, the project's pinned repo.",
+      );
+    });
+
+    it("a push refuses a switched branch just as a commit does", async () => {
+      const s = await setup();
+      s.git(s.repo, "remote", "add", "origin", "https://github.com/acme/shop.git");
+      s.git(s.mine, "switch", "-q", "-c", "investigate");
+      await expect(s.worktrees.push(s.target, "acme/shop")).rejects.toThrow("it is on investigate, not brigade/mine-1");
+    });
+
     it("when the worktree's .git file points at another task's worktree", async () => {
       const s = await setup();
       const siblingGitDir = s.git(s.sibling, "rev-parse", "--absolute-git-dir");

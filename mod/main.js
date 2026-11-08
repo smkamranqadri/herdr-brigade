@@ -63,6 +63,20 @@ export default class Brigade extends View {
       );
   }
 
+  /** "PR #42 open · 3m": the number, its last known state, and how long ago brigade read it. */
+  prChip(pr, t) {
+    const color = pr.state === "merged" ? t.accent : pr.state === "closed" ? t.dim : t.working;
+    const age = pr.checkedAt ? ` · ${Math.max(0, Math.round((Date.now() - Date.parse(pr.checkedAt)) / 60000))}m` : "";
+    return div()
+      .px(6)
+      .rounded(4)
+      .border(1)
+      .border_color(t.border)
+      .text_size(11)
+      .text_color(color)
+      .child(`PR #${pr.number} ${pr.state ?? "?"}${age}`);
+  }
+
   taskLine(task, t) {
     const color = task.waiting ? t.blocked : task.state === "finished" ? t.done : t.foreground;
     const state = task.waiting ? "waiting on you" : task.state;
@@ -81,7 +95,8 @@ export default class Brigade extends View {
           .items_center()
           .child(this.dot(task.waiting ? "blocked" : task.status, t))
           .child(div().flex_1().truncate().text_color(color).child(task.title))
-          .child(div().text_color(t.dim).child(`${task.spec.harness} · ${state}`)),
+          .child(div().text_color(t.dim).child(`${task.spec.harness} · ${state}`))
+          .when(task.pr !== null, (el) => el.child(this.prChip(task.pr, t))),
       )
       .child(
         div()

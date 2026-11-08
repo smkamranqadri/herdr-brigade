@@ -1,7 +1,9 @@
 import type { AgentContext } from "../domain/agent.ts";
 import type { ProjectConfig } from "../domain/config.ts";
 import { BrigadeError } from "../domain/errors.ts";
+import { prLine } from "../domain/pullRequests.ts";
 import { deriveTasks } from "../domain/tasks.ts";
+import { refreshPrs } from "./publish.ts";
 import { findTerminals, launchAgent, record, terminalName } from "./launch.ts";
 import type { Deps } from "./ports.ts";
 
@@ -87,11 +89,18 @@ export async function listTasks(deps: Deps, project: string | null): Promise<str
   const tasks = deriveTasks(await deps.events.read()).filter((t) => project === null || t.project === project);
   if (!tasks.length) return project ? `No tasks in ${project} yet.` : "No tasks yet.";
   const live = new Map((await findTerminals(deps, {})).map((t) => [t.address, t.status ?? "running"]));
+  const prs = await refreshPrs(
+    deps,
+    tasks.map((t) => t.id),
+  );
+  const now = deps.clock.now();
   return tasks
     .map((t) => {
       const status = live.get(t.terminal) ?? "not running";
       const note = t.note ? `: ${t.note}` : "";
-      return `${t.id} [${t.project}] "${t.title}" ${t.state} (terminal ${t.terminal}, ${status}, ${t.spec.harness})${note}`;
+      const pr = prs.get(t.id);
+      const prText = pr ? ` ${prLine(pr, now)}` : "";
+      return `${t.id} [${t.project}] "${t.title}" ${t.state} (terminal ${t.terminal}, ${status}, ${t.spec.harness})${prText}${note}`;
     })
     .join("\n");
 }

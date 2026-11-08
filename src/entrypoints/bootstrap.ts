@@ -10,6 +10,7 @@ import { randomIds, systemClock } from "../adapters/system/system.ts";
 import type { BrigadeConfig } from "../domain/config.ts";
 import { FileConfigStore } from "../adapters/config/fileConfigStore.ts";
 import { GitRepos } from "../adapters/git/gitRepos.ts";
+import { GhCli, ghRunner } from "../adapters/github/ghCli.ts";
 import { mcpEnv, type Paths } from "./settings.ts";
 
 /** The config as the CLI loads it at start. Tool calls read their own fresh snapshot (see freshDeps). */
@@ -22,6 +23,7 @@ export function buildDeps(config: BrigadeConfig, paths: Paths): Deps {
     config,
     configStore: new FileConfigStore(paths.configFile),
     repos: new GitRepos(),
+    github: new GhCli(ghRunner()),
     defaultRepoRoots: paths.defaultRepoRoots,
     terminals: new HcTerminals({ run: hcRunner(paths.hc) }),
     harnesses: new HarnessAdapters({ agentsDir: path.join(paths.stateDir, "agents"), piExtension: paths.piExtension }),

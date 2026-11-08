@@ -116,6 +116,8 @@ describe("deriveTasks", () => {
         worktree: "w",
         terminal: "t5",
         spec,
+        repo: null,
+        baseBranch: null,
         state: "finished",
         note: "Done",
         updatedAt: "3",

@@ -1,6 +1,6 @@
 import type { AgentSpec, Role } from "../domain/agent.ts";
 import type { BrigadeConfig } from "../domain/config.ts";
-import type { BrigadeEvent } from "../domain/events.ts";
+import type { BrigadeEvent, PrState } from "../domain/events.ts";
 
 /** A live hc terminal, as brigade sees it. */
 export interface TerminalInfo {
@@ -106,6 +106,30 @@ export interface Worktrees {
    * that branch. Returns null when there is nothing to commit.
    */
   commit(target: CommitTarget, message: string): Promise<Commit | null>;
+  /**
+   * Pushes the task branch, fast-forward only, after the same worktree checks as commit, and only when `origin`
+   * is `github` (owner/name) on github.com.
+   */
+  push(target: CommitTarget, github: string): Promise<void>;
+}
+
+export interface PullRequest {
+  readonly number: number;
+  readonly url: string;
+  readonly state: PrState;
+  readonly head: string;
+  readonly base: string;
+  readonly headSha: string | null;
+  readonly mergedAt: string | null;
+}
+
+/** Port to GitHub's pull requests. Every call names the repo (owner/name) explicitly. */
+export interface GitHub {
+  /** Every PR, in any state, whose head is `head` in `repo`. */
+  pullRequestsFor(repo: string, head: string): Promise<PullRequest[]>;
+  create(repo: string, pr: { head: string; base: string; title: string; body: string }): Promise<PullRequest>;
+  edit(repo: string, num: number, pr: { title: string; body: string }): Promise<void>;
+  view(repo: string, num: number): Promise<PullRequest>;
 }
 
 /** What brigade needs to know about a folder before it becomes a project. */
@@ -166,6 +190,7 @@ export interface Deps {
   readonly config: BrigadeConfig;
   readonly configStore: ConfigStore;
   readonly repos: Repos;
+  readonly github: GitHub;
   /** Where find_repo looks when the config names no repoRoots. */
   readonly defaultRepoRoots: readonly string[];
   readonly terminals: Terminals;

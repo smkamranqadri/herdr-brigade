@@ -2,6 +2,7 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 import type { Commit, CommitTarget, Worktrees } from "../../application/ports.ts";
 import { BrigadeError } from "../../domain/errors.ts";
+import { githubRepoOf } from "../../domain/github.ts";
 import { git } from "./git.ts";
 
 /** One worktree per task, under `<root>/<repo folder name>/<branch>`: the place the herdr-app worktree mod uses. */
@@ -33,6 +34,28 @@ export class GitWorktrees implements Worktrees {
     const sha = await git([...pinned, "rev-parse", "--short=12", "HEAD"], "rev-parse");
     return { sha, files: staged.length };
   }
+
+  /**
+   * Pushes only the task's branch, to the checked URL itself (not to the name "origin", which an agent could repoint
+   * between the check and the push). No force: git refuses anything but a fast-forward.
+   */
+  async push(target: CommitTarget, github: string): Promise<void> {
+    const gitDir = await verifiedGitDir(target);
+    const url = await checkedPushUrl(gitDir, github);
+    const ref = `refs/heads/${target.branch}`;
+    await git(["--git-dir", gitDir, "--work-tree", target.worktree, "push", url, `${ref}:${ref}`], "push");
+  }
+}
+
+/** The fetch-and-push URL brigade will push to: origin's push URL, only if it is `github` on github.com. */
+async function checkedPushUrl(gitDir: string, github: string): Promise<string> {
+  const url = await git(["--git-dir", gitDir, "remote", "get-url", "--push", "origin"], "remote get-url");
+  if (githubRepoOf(url) !== github) {
+    throw new BrigadeError(
+      `Brigade won't push: origin is ${url}, not github.com/${github}, the project's pinned repo.`,
+    );
+  }
+  return url;
 }
 
 /** The worktree's own git folder, once its top folder, repo and branch all match the task's record. */

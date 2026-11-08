@@ -32,6 +32,7 @@ export function deriveTasks(events) {
   for (const e of events) {
     if (e.kind === "task_created") {
       const { project, task, title, branch, worktree, terminal, spec, at } = e;
+      const pinned = { repo: e.repo ?? null, baseBranch: e.baseBranch ?? null };
       tasks.set(task, {
         id: task,
         project,
@@ -40,6 +41,7 @@ export function deriveTasks(events) {
         worktree,
         terminal,
         spec,
+        ...pinned,
         state: "working",
         note: null,
         updatedAt: at,
@@ -49,6 +51,25 @@ export function deriveTasks(events) {
     }
   }
   return [...tasks.values()];
+}
+
+/** Each task's newest PR and its last known state, folded as src/domain/pullRequests.ts does (a test checks). */
+export function derivePrs(events) {
+  const prs = new Map();
+  for (const e of events) {
+    if (e.kind === "pr_opened") {
+      const known = prs.get(e.task);
+      const same = known?.number === e.number && known.repo === e.repo;
+      const { repo, number, url, head, base } = e;
+      const state = same
+        ? { state: known.state, headSha: known.headSha, checkedAt: known.checkedAt }
+        : { state: "open", headSha: null, checkedAt: e.at };
+      prs.set(e.task, { repo, number, url, head, base, ...state });
+    }
+    const pr = e.kind === "pr_state" ? prs.get(e.task) : undefined;
+    if (pr && pr.number === e.number) prs.set(e.task, { ...pr, state: e.state, headSha: e.headSha, checkedAt: e.at });
+  }
+  return prs;
 }
 
 /** A project's note count and open suggestions, folded as src/domain/notes.ts does (a test checks they agree). */
@@ -114,12 +135,14 @@ const agentRow = (t) => ({ address: t.address, status: t.status ?? null, harness
 export function buildModel(terminals, events, configured = []) {
   const brigade = terminals.filter((t) => t.labels?.brigade === "main");
   const byTask = new Map(brigade.filter((t) => t.labels.task).map((t) => [t.labels.task, t]));
+  const prs = derivePrs(events);
   const tasks = deriveTasks(events).map((task) => {
     const term = byTask.get(task.id);
     const status = term?.status ?? null;
     return {
       ...task,
       address: term?.address ?? null,
+      pr: prs.get(task.id) ?? null,
       status,
       waiting: task.state === "asking" || status === "blocked",
     };

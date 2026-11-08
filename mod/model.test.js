@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { deriveNotes } from "../src/domain/notes.ts";
+import { derivePrs as domainDerivePrs } from "../src/domain/pullRequests.ts";
 import { deriveTasks as domainDeriveTasks } from "../src/domain/tasks.ts";
-import { buildModel, configProjects, deriveTasks, eventText, noteCounts, parseEvents } from "./model.js";
+import { buildModel, configProjects, derivePrs, deriveTasks, eventText, noteCounts, parseEvents } from "./model.js";
 
 const spec = { harness: "codex", model: "gpt-x", effort: "low", permissions: "auto" };
 const created = (task, title, terminal, at) => ({
@@ -173,5 +174,67 @@ describe("notes in the panel", () => {
     const m = buildModel([], NOTE_EVENTS, configProjects(JSON.stringify({ projects: [{ name: "blog" }] })));
     expect(m.projects).toEqual([{ name: "blog", captain: null, tasks: [], notes: { notes: 1, openSuggestions: 0 } }]);
     expect(configProjects("{ half-written")).toEqual([]);
+  });
+});
+
+describe("PR chips", () => {
+  const PR_EVENTS = [
+    created("task-a", "Login", "t3", "2026-11-09T10:00:10.000Z"),
+    {
+      at: "2026-11-09T10:05:00.000Z",
+      kind: "pr_opened",
+      task: "task-a",
+      repo: "acme/shop",
+      number: 7,
+      url: "u7",
+      head: "brigade/task-a",
+      base: "main",
+    },
+    {
+      at: "2026-11-09T10:06:00.000Z",
+      kind: "pr_state",
+      task: "task-a",
+      number: 7,
+      state: "merged",
+      headSha: "abc",
+      mergedAt: "2026-11-09T10:06:00.000Z",
+    },
+    {
+      at: "2026-11-09T10:07:00.000Z",
+      kind: "pr_opened",
+      task: "task-a",
+      repo: "acme/shop",
+      number: 7,
+      url: "u7",
+      head: "brigade/task-a",
+      base: "main",
+    },
+    {
+      at: "2026-11-09T10:08:00.000Z",
+      kind: "pr_state",
+      task: "task-a",
+      number: 9,
+      state: "closed",
+      headSha: "x",
+      mergedAt: null,
+    },
+  ];
+
+  it("folds PRs the same way brigade's own fold does", () => {
+    expect(derivePrs(PR_EVENTS)).toEqual(domainDerivePrs(PR_EVENTS));
+  });
+
+  it("puts each task's PR on its row", () => {
+    const task = buildModel([], PR_EVENTS, []).projects[0].tasks[0];
+    expect(task.pr).toEqual({
+      repo: "acme/shop",
+      number: 7,
+      url: "u7",
+      head: "brigade/task-a",
+      base: "main",
+      state: "merged",
+      headSha: "abc",
+      checkedAt: "2026-11-09T10:06:00.000Z",
+    });
   });
 });

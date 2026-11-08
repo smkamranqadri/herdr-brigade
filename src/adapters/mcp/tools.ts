@@ -1,6 +1,7 @@
 import { createTask, reportToCoordinator, sendToTask } from "../../application/captain.ts";
 import { listProjects, listTasks, sendToCaptain } from "../../application/coordinator.ts";
 import { addProject, findRepo, updateProject } from "../../application/projects.ts";
+import { createPullRequest } from "../../application/publish.ts";
 import type { Deps } from "../../application/ports.ts";
 import { askOwner, commitWork, finishTask, messageCaptain } from "../../application/worker.ts";
 import type { AgentContext, Role } from "../../domain/agent.ts";
@@ -106,6 +107,27 @@ function captainTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
   };
 }
 
+/** A worker's git tools: they run outside its sandbox, on its own checked worktree. */
+function workerGitTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
+  return {
+    commit: {
+      description:
+        "Commit every change in your worktree on your branch. Use this instead of git commit: it works inside any sandbox.",
+      inputSchema: schema(["message"], { message: "The commit message: a short subject line, then any detail." }),
+      run: (a) => commitWork(deps, ctx, { message: str(a, "message") }),
+    },
+    create_pull_request: {
+      description:
+        "Push your task branch and open its pull request against the project's base branch, or update the open one. Commit first.",
+      inputSchema: schema(["title", "body"], {
+        title: "The pull request's title.",
+        body: "What changed and how it was checked.",
+      }),
+      run: (a) => createPullRequest(deps, ctx, { title: str(a, "title"), body: str(a, "body") }),
+    },
+  };
+}
+
 function workerTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
   return {
     finish: {
@@ -117,12 +139,6 @@ function workerTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
       description: "Ask the owner a question you can't settle yourself. Then end your turn.",
       inputSchema: schema(["question"], { question: "One question, with your recommended answer." }),
       run: (a) => askOwner(deps, ctx, { question: str(a, "question") }),
-    },
-    commit: {
-      description:
-        "Commit every change in your worktree on your branch. Use this instead of git commit: it works inside any sandbox.",
-      inputSchema: schema(["message"], { message: "The commit message: a short subject line, then any detail." }),
-      run: (a) => commitWork(deps, ctx, { message: str(a, "message") }),
     },
     message_captain: {
       description:
@@ -140,7 +156,7 @@ const BY_ROLE: Readonly<Record<Role, (deps: Deps, ctx: AgentContext) => Record<s
     ...coordinatorNoteTools(deps, ctx),
   }),
   captain: (deps, ctx) => ({ ...captainTools(deps, ctx), ...captainNoteTools(deps, ctx) }),
-  worker: (deps, ctx) => ({ ...workerTools(deps, ctx), ...workerNoteTools(deps, ctx) }),
+  worker: (deps, ctx) => ({ ...workerTools(deps, ctx), ...workerGitTools(deps, ctx), ...workerNoteTools(deps, ctx) }),
 };
 
 /** Refuses any argument the tool's schema doesn't name (guide C7): a tool never takes settings it doesn't offer. */

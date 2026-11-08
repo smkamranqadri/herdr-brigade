@@ -3,6 +3,7 @@ import { BrigadeError } from "../domain/errors.ts";
 import { deriveTasks } from "../domain/tasks.ts";
 import { record } from "./launch.ts";
 import { retroFor } from "./notes.ts";
+import { prReport } from "./publish.ts";
 import type { Deps } from "./ports.ts";
 
 interface WorkerIdentity {
@@ -26,7 +27,9 @@ export async function finishTask(deps: Deps, ctx: AgentContext, input: { summary
   const w = identity(ctx);
   await record(deps, { kind: "task_finished", task: w.task, summary: input.summary });
   const retro = await retroFor(deps, w.project, w.task);
-  await deps.terminals.send(w.captain, `${label(w)} finished: ${input.summary}${retro ? `\n${retro}` : ""}`);
+  const pr = await prReport(deps, w.task);
+  const extra = [pr, retro].filter(Boolean).join("\n");
+  await deps.terminals.send(w.captain, `${label(w)} finished: ${input.summary}${extra ? `\n${extra}` : ""}`);
   return "Sent to your Captain. End your turn now.";
 }
 
