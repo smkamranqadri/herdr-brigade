@@ -56,4 +56,20 @@ Third attempt, after the fixes:
 | Coordinator → Captain → worker, all on Codex | Pass. The Captain's brief was typed in once it was ready. The worker's trust prompt was answered and its brief typed in. |
 | Worker commits | **Fail.** Codex's `workspace-write` sandbox keeps git metadata read-only, even with `--add-dir <repo>/.git`: `index.lock: Read-only file system`. The worker called `ask_user`, and the Captain reported the problem to the Coordinator correctly. |
 
-Open: how a sandboxed Codex worker commits. This is the owner's decision.
+The owner chose a brigade `commit` tool for workers (`docs/decisions.md`).
+
+## 2026-11-09: phase 1 step 4, each harness in all three roles
+
+Run with `scripts/e2e.sh <harness> "<request>"`. Each run has its own repo, config and state folder under `~/.local/state/herdr-brigade-e2e`. Request: "in demo add <harness>.txt with the single line hello from <harness>, commit it on the task branch, nothing else". Every check below was made by hand after the run, not taken from the agents' reports.
+
+| Harness (model, effort) | Time | Commit (via the `commit` tool) | Checked by hand |
+| --- | --- | --- | --- |
+| Codex (`gpt-6.1-terra`, low) | 55 s | `ef76a93` | Only `codex.txt`, exact bytes (`od -c`), clean worktree, `main` unchanged, result relayed to the owner |
+| pi (`openai/gpt-6.1-sol`, low) | 49 s | `6f36e5d` | Same checks; no agent loaded another project's `AGENTS.md` |
+| Claude Code (`claude-sonnet-5-5`, low) | 36 s | `b972d89` | Same checks; no approval prompt in the worker's history |
+
+Found on the way:
+
+- **Runs inside a repo pick up its rules.** The first pi run sat under brigade's own folder: its agents loaded brigade's `AGENTS.md`, and the worker ran brigade's `npm run gate`. Runs now live outside any repo.
+- **pi can drop the Enter of a message sent right after it starts.** The pasted request stayed in pi's input box until Enter was pressed again. `scripts/e2e.sh` now presses Enter again when no turn starts. Brigade itself gives pi its first message on the command line; a follow-up sent in pi's first seconds could still hit this (not seen yet).
+- **Two machine restarts** (2026-11-08 23:08 and 2026-11-09 01:32) cleared `/tmp` and cut off two runs. That is another reason the runs no longer live in `/tmp`.

@@ -42,6 +42,17 @@ Each role's config takes `permissions`: `ask`, `auto` or `bypass`. Workers defau
 - **Risk accepted:** the owner's lore says not to pass `--permission-mode auto` to `herdr agent start` (the older TUI). With `hc` and Claude Code 2.1.319, auto mode started with no opt-in screen, and a worker committed with no prompt (`docs/e2e-runs.md`). Auto mode still refuses some actions on its own, such as production deploys, `ssh` and credential reads.
 - Claude Code's mode for each level: workers `acceptEdits` / `auto` / `bypassPermissions`; Coordinators and Captains `manual` / `auto` / `bypassPermissions`. `manual` replaces `default`, which is no longer on Claude's documented list.
 
+## Workers commit through brigade (2026-11-08, owner's choice)
+
+Codex's `workspace-write` sandbox keeps git metadata read-only, even with `--add-dir`, so a Codex worker cannot run `git commit`. Workers now have a `commit` tool: brigade's MCP server, which runs outside the agent's sandbox, runs `git add -A` and `git commit` in that worker's own worktree. The worktree comes from the event log, never from the agent. Every harness uses the tool, so the rule is the same everywhere.
+
+- **Alternatives rejected:** running Codex workers with no sandbox (as Box Yard does), or leaving their work uncommitted.
+- **Note:** the repo's own git hooks run during that commit, outside the agent's sandbox, as they would for a person.
+
+## Trust prompts are answered, and saved, by the harness (2026-11-08)
+
+Claude Code and Codex ask once per folder whether to trust it. Brigade answers yes for the folders it starts agents in, one checked key at a time. Each harness then saves the folder as trusted in its own global file (`~/.claude.json`, `~/.codex/config.toml`). Each new worktree adds an entry. `-c projects."<folder>".trust_level` did not skip Codex's prompt.
+
 ## Gaps against the guide, on purpose (guide P8)
 
 - **CI (S7, Q3):** none yet; there is no remote. Add it when the repo gets one.

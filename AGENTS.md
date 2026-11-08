@@ -19,6 +19,8 @@ npm run gate          # format, lint, types, layer rules, unused code, suppressi
 
 The pre-commit hook runs `npm run precommit` (format, lint, types). A task is done only when `npm run gate` passes and its output is in the task proof.
 
+Real agents (not part of the gate; uses model usage): `npm run e2e -- <claude|codex|pi> "<request>"`. Runs go to `~/.local/state/herdr-brigade-e2e`, outside any repo. Record each run in `docs/e2e-runs.md`, with what you checked by hand.
+
 ## Playbooks
 
 **Add a harness** (an agent program like `claude`):

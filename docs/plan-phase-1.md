@@ -56,7 +56,7 @@ PR tracking and a merge button, project notes and the notes retro, hooks, schedu
    - `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `.editorconfig`, `.env.example`, `LICENSE` (MIT, unless you say otherwise);
    - lefthook for pre-commit, and a gate script that the hook and later CI share.
 3. **A tracer bullet** (guide W4): the Coordinator, one Captain and one worker on Claude, through every layer, with tests. **Done 2026-11-08**; see `docs/e2e-runs.md`. The owner chose a per-role `permissions` setting, with workers on `auto` (`docs/decisions.md`).
-4. Add the Codex and pi adapters, behind contract tests that every adapter passes.
+4. Add the Codex and pi adapters, behind contract tests that every adapter passes. **Done 2026-11-09**: each harness ran all three roles end to end (`docs/e2e-runs.md`). Workers commit through a brigade `commit` tool.
 5. Add parallel tasks with worktrees.
 6. Add the mod.
 7. Run the end-to-end check, once for each harness.

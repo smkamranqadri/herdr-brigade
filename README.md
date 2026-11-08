@@ -19,6 +19,7 @@ mise install && npm ci          # set up: the pinned Node 22.23.3, the dev tools
 npm run brigade -- init         # write ~/.config/herdr-brigade/config.json, then add your projects to it
 npm run brigade -- start        # run: start the Coordinator, then open it from Herdr's agent list
 npm run gate                    # test: format, lint, types, layer rules, unused code, suppressions, audit, tests
+npm run e2e -- codex "<request>" # a real run on one harness (claude, codex or pi); uses model usage
 ```
 
 `npm run brigade -- status` lists the brigade's agents and tasks. The plan is in `docs/plan-phase-1.md`, real-agent runs are in `docs/e2e-runs.md`, and agent rules are in `AGENTS.md`.
