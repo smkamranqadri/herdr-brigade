@@ -107,3 +107,11 @@ Found and fixed:
 - **`brigade start` could not focus the new Coordinator:** herdr-app answered "no running terminal" because it had not seen the new hc terminal yet. Focus now retries for up to 10 seconds on that error only.
 - **pi dropped the Enter of the first message again;** the script pressed it again, as designed.
 - **The script stopped as soon as the alpha report arrived,** in the same second as the beta finish. It now also waits for 10 quiet seconds, so a second report is recorded.
+
+## 2026-11-09: phase 2 step 1, a project added from chat
+
+`scripts/e2e.sh claude "can you add a new project for my demo2 site repo, call it demo2, then in demo2 add hello.txt with the single line hello from demo2 and commit it on the task branch"`. The run's `repoRoots` names a folder with a second repo, `demo2-site`. Time: 50 s.
+
+Checked by hand: `config.json` gained `demo2` → `…/extra/demo2-site`, base `main`, no `github` (the test repo has no origin). `project_added` was recorded, and `task_created` pinned the repo and base branch. Commit `45b5bb8` holds only `hello.txt` with exact bytes; `demo2-site`'s `main` is unchanged, and no lock file was left behind.
+
+Not confirmed: whether the Coordinator called `find_repo` before `add_project`. Claude folds tool calls into "Called brigade" on screen; the right repo path suggests it did.
