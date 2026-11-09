@@ -5,6 +5,19 @@ import { BrigadeError } from "../../domain/errors.ts";
 import { githubRepoOf } from "../../domain/github.ts";
 import { git } from "./git.ts";
 
+/**
+ * Every git call brigade makes for an agent runs outside the agent's sandbox, so it runs no hooks: a hook (or a hook
+ * manager such as lefthook) can run commands the agent wrote into its worktree.
+ */
+const NO_HOOKS = ["-c", "core.hooksPath=/dev/null"];
+
+/** The arguments of the task branch's push: that one branch, no tags, no submodules, no force. */
+export function pushArgs(gitDir: string, worktree: string, url: string, branch: string): string[] {
+  const ref = `refs/heads/${branch}`;
+  const pinned = [...NO_HOOKS, "--git-dir", gitDir, "--work-tree", worktree];
+  return [...pinned, "push", "--no-follow-tags", "--recurse-submodules=no", url, `${ref}:${ref}`];
+}
+
 /** One worktree per task, under `<root>/<repo folder name>/<branch>`: the place the herdr-app worktree mod uses. */
 export class GitWorktrees implements Worktrees {
   private readonly root: string;
@@ -26,7 +39,7 @@ export class GitWorktrees implements Worktrees {
    */
   async commit(target: CommitTarget, message: string): Promise<Commit | null> {
     const gitDir = await verifiedGitDir(target);
-    const pinned = ["--git-dir", gitDir, "--work-tree", target.worktree];
+    const pinned = [...NO_HOOKS, "--git-dir", gitDir, "--work-tree", target.worktree];
     await git([...pinned, "add", "-A"], "add");
     const staged = (await git([...pinned, "diff", "--cached", "--name-only"], "diff")).split("\n").filter(Boolean);
     if (staged.length === 0) return null;
@@ -42,17 +55,40 @@ export class GitWorktrees implements Worktrees {
   async push(target: CommitTarget, github: string): Promise<void> {
     const gitDir = await verifiedGitDir(target);
     const url = await checkedPushUrl(gitDir, github);
-    const ref = `refs/heads/${target.branch}`;
-    await git(["--git-dir", gitDir, "--work-tree", target.worktree, "push", url, `${ref}:${ref}`], "push");
+    await git(pushArgs(gitDir, target.worktree, url, target.branch), "push");
   }
 }
 
-/** The fetch-and-push URL brigade will push to: origin's push URL, only if it is `github` on github.com. */
+/** A URL without any user name or password in it, safe to show in a message. */
+export function withoutCredentials(url: string): string {
+  return url.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@]*@/i, "$1");
+}
+
+/** The prefixes that git's url.<base>.insteadOf and pushInsteadOf rules rewrite, from every config scope. */
+async function rewrittenPrefixes(gitDir: string): Promise<string[]> {
+  const entries = (await git(["--git-dir", gitDir, "config", "--list", "-z"], "config")).split("\0");
+  return entries.flatMap((entry) => {
+    const [key = "", value = ""] = entry.split("\n");
+    return /^url\..+\.(insteadof|pushinsteadof)$/.test(key) ? [value] : [];
+  });
+}
+
+/**
+ * The URL brigade will push to: origin's push URL, only if it is `github` on github.com. git rewrites a URL once
+ * more when it pushes to it, so a url.*.insteadOf rule that matches this URL is refused too: it would send the push
+ * somewhere else.
+ */
 async function checkedPushUrl(gitDir: string, github: string): Promise<string> {
   const url = await git(["--git-dir", gitDir, "remote", "get-url", "--push", "origin"], "remote get-url");
   if (githubRepoOf(url) !== github) {
     throw new BrigadeError(
-      `Brigade won't push: origin is ${url}, not github.com/${github}, the project's pinned repo.`,
+      `Brigade won't push: origin is ${withoutCredentials(url)}, not github.com/${github}, the project's pinned repo.`,
+    );
+  }
+  const rule = (await rewrittenPrefixes(gitDir)).find((prefix) => url.startsWith(prefix));
+  if (rule !== undefined) {
+    throw new BrigadeError(
+      `Brigade won't push: a git url rewrite rule for "${withoutCredentials(rule)}" would send ${url} somewhere else.`,
     );
   }
   return url;

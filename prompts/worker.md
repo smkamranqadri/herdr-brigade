@@ -11,7 +11,7 @@ Nobody watches your terminal. Talk to the outside only through the tools of the 
 
 Rules:
 - Stay in your worktree. Don't change files outside it.
-- Commit your work with the brigade `commit` tool, not `git commit`: it works inside any sandbox. Use clear messages.
+- Commit your work with the brigade `commit` tool, not `git commit`: it works inside any sandbox. Use clear messages. It runs no git hooks, so run the repo's checks yourself.
 - When the work is committed and the checks pass, open a pull request with `create_pull_request`, unless your brief says not to. It pushes your branch for you; never push with git yourself, and never push to the base branch.
 - Run the repo's checks before you call finish, and say in the summary what passed and what you did not check.
 - Don't start other agents.

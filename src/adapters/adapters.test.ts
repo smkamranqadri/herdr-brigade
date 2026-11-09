@@ -1,11 +1,11 @@
 // Adapter tests that touch the real file system and git, in temp folders.
 import { execFileSync } from "node:child_process";
-import { appendFile, mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { access, appendFile, chmod, mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { JsonlEventLog } from "./eventlog/jsonlEventLog.ts";
-import { GitWorktrees } from "./git/gitWorktrees.ts";
+import { GitWorktrees, pushArgs, withoutCredentials } from "./git/gitWorktrees.ts";
 import { FilePrompts } from "./prompts/filePrompts.ts";
 import { randomIds } from "./system/system.ts";
 
@@ -46,6 +46,15 @@ describe("JsonlEventLog after a crash", () => {
 });
 
 describe("GitWorktrees", () => {
+  // The owner's own git config (url rewrites, hooks) must not change what these tests see.
+  beforeAll(async () => {
+    const empty = path.join(await temp("gitconfig"), "config");
+    await writeFile(empty, "");
+    vi.stubEnv("GIT_CONFIG_GLOBAL", empty);
+    vi.stubEnv("GIT_CONFIG_NOSYSTEM", "1");
+  });
+  afterAll(() => vi.unstubAllEnvs());
+
   it("adds a worktree on a new branch from the base branch", async () => {
     const repo = path.join(await temp("repo"), "shop");
     await mkdir(repo);
@@ -203,6 +212,37 @@ describe("GitWorktrees", () => {
       expect(s.git(s.repo, "log", "-1", "--format=%s", "brigade/mine-1")).toBe("init");
     });
 
+    it("when a git url rewrite rule would send the checked URL somewhere else", async () => {
+      const s = await setup();
+      s.git(s.repo, "remote", "add", "origin", "alias:shop");
+      s.git(s.repo, "config", "url.https://github.com/acme/shop.git.insteadOf", "alias:shop");
+      s.git(s.repo, "config", "url.https://elsewhere.example/.insteadOf", "https://github.com/");
+      await expect(s.worktrees.push(s.target, "acme/shop")).rejects.toThrow(
+        /^Brigade won't push: a git url rewrite rule for "https:\/\/github\.com\/" would send https:\/\/github\.com\/acme\/shop\.git somewhere else\.$/,
+      );
+    });
+
+    it("never shows a password from origin's URL", async () => {
+      const s = await setup();
+      s.git(s.repo, "remote", "add", "origin", "https://x-token:FICTIONAL-SECRET-42@github.com/someone-else/shop.git");
+      const refused = s.worktrees.push(s.target, "acme/shop");
+      await expect(refused).rejects.toThrow(
+        /^Brigade won't push: origin is https:\/\/github\.com\/someone-else\/shop\.git, not github\.com\/acme\/shop, the project's pinned repo\.$/,
+      );
+      expect(withoutCredentials("ssh://git:pw@github.com/a/b.git")).toBe("ssh://github.com/a/b.git");
+      expect(withoutCredentials("git@github.com:a/b.git")).toBe("git@github.com:a/b.git");
+    });
+
+    it("runs no hooks when it commits for an agent", async () => {
+      const s = await setup();
+      const marker = path.join(s.repo, "hook-ran");
+      const hook = path.join(s.repo, ".git", "hooks", "pre-commit");
+      await writeFile(hook, `#!/bin/sh\necho ran > "${marker}"\n`);
+      await chmod(hook, 0o755);
+      expect((await s.worktrees.commit(s.target, "Work"))?.files).toBe(1);
+      await expect(access(marker)).rejects.toThrow("ENOENT");
+    });
+
     it("when the worktree's .git file points at another task's worktree", async () => {
       const s = await setup();
       const siblingGitDir = s.git(s.sibling, "rev-parse", "--absolute-git-dir");
@@ -210,6 +250,22 @@ describe("GitWorktrees", () => {
       await expect(s.worktrees.commit(s.target, "x")).rejects.toThrow("it is on brigade/sibling-2, not brigade/mine-1");
       expect(s.git(s.sibling, "log", "-1", "--format=%s")).toBe("init");
     });
+  });
+
+  it("pushes only the task branch: no hooks, no tags, no submodules, no force", () => {
+    expect(pushArgs("/g", "/w", "git@github.com:acme/shop.git", "brigade/x-1")).toEqual([
+      "-c",
+      "core.hooksPath=/dev/null",
+      "--git-dir",
+      "/g",
+      "--work-tree",
+      "/w",
+      "push",
+      "--no-follow-tags",
+      "--recurse-submodules=no",
+      "git@github.com:acme/shop.git",
+      "refs/heads/brigade/x-1:refs/heads/brigade/x-1",
+    ]);
   });
 
   it("fails with git's own message when the base branch is missing", async () => {
