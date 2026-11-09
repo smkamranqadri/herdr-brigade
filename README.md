@@ -1,77 +1,129 @@
-# herdr-brigade
+<p align="center">
+  <img src="docs/assets/social-preview.png" alt="herdr-brigade: you talk to a Coordinator, which sends work to a Captain per project and a worker per task" width="720">
+</p>
 
-A brigade of coding agents inside herdr-app. You talk to one agent. It starts and follows up worker agents, each in its own Herdr terminal, and a Herdr mod shows the whole brigade.
+<h1 align="center">herdr-brigade</h1>
 
-The roles follow a kitchen brigade:
+<p align="center">
+  One chat. A brigade of coding agents inside Herdr.<br>
+  Claude Code, Codex or pi, each task in its own git worktree, with its own pull request.
+</p>
 
-| Role | Job |
-| --- | --- |
-| Coordinator (later) | Takes your requests and sends each one to the right project. |
-| Captain | One for each project. Starts workers and reports their results. |
-| Worker | One for each task. Does the work in its own terminal and folder. |
+You talk to one agent, the **Coordinator**. It sends each request to the **Captain** of the right project. The Captain splits the work into tasks and starts one **worker** per task. Each worker runs in its own Herdr terminal, on its own branch and worktree, commits through brigade, and can open a pull request. A panel in herdr-app shows the whole brigade live.
 
-The ideas come from Box Yard (AgentSystemLabs/box-yard). The code is our own (guide rule D8).
+| Role | One per | Job |
+| --- | --- | --- |
+| Coordinator | brigade | Takes your requests, adds projects, and sends work to the right Captain. |
+| Captain | project | Splits work into tasks, starts and follows up workers, keeps the project's notes, reports back. |
+| Worker | task | Does the work in its own worktree, commits, opens a pull request, and reports when done or blocked. |
 
-## Development
+Each role can run on Claude Code, Codex or pi, with its own model, effort and permission level.
+
+<p align="center">
+  <img src="docs/assets/panel.png" alt="The Brigade panel: the Coordinator, a project with one note, its Captain, a finished task with an open pull request, and the latest events" width="352">
+</p>
+
+## How to use
+
+### Requirements
+
+- Linux with **Herdr**: the `hc` core and the `herdr-app` window. Tested with hc 0.1.19 and herdr-app 0.1.14.
+- **Node 22.23.3** (pinned; `mise install` gets it).
+- At least one agent CLI, signed in: **Claude Code** (tested 2.1.319), **Codex** (0.167.0) or **pi** (1.5.0).
+- **git**, and the **GitHub CLI** (`gh`, signed in) if workers should open pull requests.
+
+### Install
 
 ```sh
-mise install && npm ci          # set up: the pinned Node 22.23.3, the dev tools and the pre-commit hook
-npm run brigade -- init         # write ~/.config/herdr-brigade/config.json, then add your projects to it
-npm run brigade -- start        # run: start the Coordinator, then open it from Herdr's agent list
-npm run gate                    # test: format, lint, types, layer rules, unused code, suppressions, audit, tests
-npm run e2e -- codex "<request>" # a real run on one harness (claude, codex or pi); uses model usage
+git clone https://github.com/smkamranqadri/herdr-brigade.git && cd herdr-brigade
+mise install && npm ci
+npm run brigade -- init          # writes ~/.config/herdr-brigade/config.json
+npm run brigade -- mod install   # installs the Brigade panel into herdr-app
 ```
 
-`npm run brigade -- status` lists the brigade's agents and tasks. The Brigade panel for herdr-app: `npm run brigade -- mod install`, then see `docs/herdr-app.md`. The plan is in `docs/plan-phase-1.md`, real-agent runs are in `docs/e2e-runs.md`, and agent rules are in `AGENTS.md`.
+`init` writes a starter config: the Coordinator on Claude Code (`claude-opus-5-5`), Captains and workers on `claude-sonnet-5-5`. Change any role in the file. To open the panel from a button beside Automations, see [docs/herdr-app.md](docs/herdr-app.md). `npm run brigade -- panel` opens it as a window instead.
 
-## Status: proof of concept
+### First steps
 
-`poc/` is throwaway code. It tests whether the design works in herdr-app before phase 1 starts.
+1. Start the brigade: click **Start brigade** in the panel, or run `npm run brigade -- start`. The Coordinator opens over your current tab.
+2. Add a project by chat: *"add my repo shop-site as a project"*. Brigade looks for the repo under `~/Repositories` (set `repoRoots` to change that). If the repo's `origin` is on GitHub, that repo is pinned, and pull requests go only there.
+3. Ask for work: *"in shop-site, add a dark mode toggle and open a pull request"*. The Captain starts a worker and reports back when it finishes or needs you.
+4. Click any row in the panel to open that agent over your tab and talk to it. **↗ keep** makes it a tab.
 
-Relaxed on purpose for the POC (guide rule P8): no layers, no tests beyond the run below, no hooks, no CI, and hard-coded paths in the mod. Phase 1 starts clean.
+Project notes are lasting preferences, such as *"remember for shop-site: designs use little text"*. Every new worker of that project starts with them. Workers can suggest notes; the Captain accepts, merges or rejects each one.
 
-### Run it
+### Commands
 
-Needs Node 22, `hc` and `herdr-app` on this computer, and Claude Code signed in.
+| Command | What it does |
+| --- | --- |
+| `npm run brigade -- init` | Write a starter config (never overwrites one). |
+| `npm run brigade -- start` | Start the Coordinator, or show it if it is running. |
+| `npm run brigade -- status` | List the brigade's agents and tasks. |
+| `npm run brigade -- panel` | Open or close the Brigade panel as a window. |
+| `npm run brigade -- mod install` | Install or update the panel in herdr-app. |
 
-```sh
-node poc/launch.mjs --repo <a git folder> --project demo "Start one worker task: create hello.txt ..."
-cp poc/mod/main.js poc/mod/mod.json ~/.config/herdr-app/mods/brigade-poc/
-herdr-app do mod.open --name brigade-poc
+### Configuration
+
+`~/.config/herdr-brigade/config.json`:
+
+```json
+{
+  "owner": "Sam",
+  "repoRoots": ["/home/sam/Repositories"],
+  "roles": {
+    "coordinator": { "harness": "claude", "model": "claude-opus-5-5", "effort": "medium" },
+    "captain": { "harness": "claude", "model": "claude-sonnet-5-5", "effort": "low" },
+    "worker": { "harness": "codex", "model": "gpt-6.1-terra", "effort": "medium", "permissions": "auto" }
+  },
+  "projects": [
+    { "name": "shop-site", "repo": "/home/sam/Repositories/shop-site", "baseBranch": "main", "github": "sam/shop-site" }
+  ]
+}
 ```
 
-### Parts
+- `harness`: `claude`, `codex` or `pi`. `effort`: `low`, `medium`, `high`, `xhigh` or `max`.
+- `permissions`: `ask`, `auto` (the worker default) or `bypass`. The Coordinator and Captains never get shell or file-edit tools, whatever their level. A Codex worker runs in Codex's sandbox unless it is on `bypass`.
+- `repoRoots`: absolute paths where brigade looks for repos (default `~/Repositories`).
+- Projects are usually added by chat. Agents can add projects and change a base branch, but they can't change `owner`, `roles`, `repoRoots` or a project's GitHub repo.
+- Environment variables (all optional) are listed in [.env.example](.env.example).
 
-| File | What it does |
-| --- | --- |
-| `poc/launch.mjs` | Starts the Captain as an interactive `claude` in a new `hc` terminal. |
-| `poc/mcp.mjs` | The brigade MCP server (stdio, no packages). Captain tools: `create_task`, `list_tasks`. Worker tools: `finish`, `ask_user`. |
-| `poc/agents.mjs` | Writes each agent's MCP config and system prompt, and builds its `claude` argv. |
-| `poc/hc.mjs` | Calls `hc`, and answers Claude's folder-trust prompt. |
-| `poc/prompts/*.md` | The Captain and worker system prompts. |
-| `poc/mod/` | The herdr-app mod: agents grouped by project, live status, latest events. |
+## What you get
 
-## POC result (2026-11-08)
+- **One chat for every project.** The Coordinator routes work and reports results, so you don't juggle terminals.
+- **Isolated tasks.** Each worker gets its own branch and git worktree, so parallel tasks don't collide.
+- **Commits that work in any sandbox.** Workers commit through brigade, which first checks that the worktree, repo and branch are still the task's own.
+- **Pull requests, pinned.** A worker pushes only its own branch, only to the project's pinned GitHub repo, never with force, and never to a merged or closed PR's branch. `list_tasks` reads each PR's live state from GitHub.
+- **Project notes with a retro.** Lasting preferences reach every new worker, within a budget. The Captain settles workers' suggestions.
+- **A live panel.** Agents, tasks, PR chips, note counts and the latest events, with a Start button and click-to-open.
+- **Mix harnesses.** Any role on Claude Code, Codex or pi.
 
-Run on hc 0.1.18, herdr-app 0.1.13, Claude Code 2.1.319, `claude-sonnet-5-5` at low effort.
+## Contributing
 
-| Check | Result |
-| --- | --- |
-| 1. An `hc` terminal runs interactive `claude` with brigade's MCP server, and the agent calls a tool without a permission prompt | Pass. The Captain called `create_task`. |
-| 2. `create_task` starts a worker as an `hc` child with labels | Pass. Worker `t98` had `brigade`, `project`, `task` and `role` labels. |
-| 3. The worker's `finish` wakes the Captain, and the Captain reports | Pass. The report arrived 8 s after the worker started. `hello.txt` held exactly `hello from brigade\n`, checked with `od -c`. |
-| 4. The mod shows the brigade live | Pass. A screenshot showed both agents, their status and five events. `herdr-app check` passed, and `herdr-app status` showed no errors. |
+See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `npm run gate` must pass, every change comes with its test, and every guard is checked by breaking it.
 
-### What we learned
+## Security
 
-- **Trust prompt.** Claude asks whether to trust each new folder, and its default answer is "No, exit". Brigade answers Down, Enter. This adds the folder to the trusted list in `~/.claude.json`.
-- **`hc --json` placement.** `--json` must come before `--`. After it, `hc` passes the flag to the program. This bug made the first Captain exit.
-- **The MCP server knows its agent.** `HC_TERMINAL_ID` reaches the MCP server through Claude's environment, so a tool knows which terminal called it.
-- **Reports arrive tagged.** `hc send` delivers text as `<hc from="t98 brigade-w-…">…</hc>`. The Captain treated it as a worker report, as its prompt says.
-- **Your own Claude setup reaches the workers.** A Stop hook from your global Claude config ran in the worker. Your global `CLAUDE.md` and memory load there too. Box Yard keeps these out with `CLAUDE_CONFIG_DIR`. Phase 1 must choose.
-- **Herdr already shows the tree.** The Agents sidebar nests the worker under the Captain, from the `hc` parent link alone.
-- **Ghost text.** Claude showed a suggested prompt ("commit hello.txt") in the Captain's input. It was not sent.
+Agents run as your user and act on your repos. Read [SECURITY.md](SECURITY.md) for what brigade guards, what it doesn't, and how to report a problem.
 
-### Not tested yet
+## Project layout
 
-`ask_user`, Codex workers, workers on another machine, several workers at once, a crash or restart, a Coordinator above Captains, and the timeouts in `hc.mjs` under a slow start.
+```text
+src/domain/        rules with no I/O: config, tasks, notes, pull requests
+src/application/   use cases: Coordinator, Captain and worker tools, publishing, notes
+src/adapters/      hc, git, gh, the harness launchers (Claude Code, Codex, pi), the MCP server, files
+src/entrypoints/   the brigade CLI and its wiring
+prompts/           each role's system prompt
+mod/               the Brigade panel for herdr-app
+pi-extension/      registers brigade's MCP server in pi
+scripts/           the gate's helpers and the real-agent run (scripts/e2e.sh)
+docs/              architecture, decisions, plans, real-agent runs, reviews
+poc/               the first proof of concept (see docs/poc.md)
+```
+
+## Credits
+
+The design follows [Box Yard](https://github.com/AgentSystemLabs/box-yard): a Coordinator, a Captain per project and a worker per task. The code is written from scratch for Herdr.
+
+## License
+
+[MIT](LICENSE)

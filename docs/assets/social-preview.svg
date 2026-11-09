@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <!-- Social preview for the GitHub repo. Render: rsvg-convert docs/assets/social-preview.svg -o docs/assets/social-preview.png -->
+  <rect width="1280" height="640" fill="#16171b"/>
+  <g font-family="Inter, 'DejaVu Sans', sans-serif">
+    <text x="96" y="168" font-size="76" font-weight="700" fill="#f2f2f3">herdr-brigade</text>
+    <text x="96" y="232" font-size="32" fill="#a6a8b0">One chat. A brigade of coding agents inside Herdr.</text>
+
+    <g transform="translate(0 46)">
+    <!-- The chain: you, the Coordinator, a Captain per project, a worker per task. -->
+    <g font-size="24" fill="#f2f2f3">
+      <rect x="96" y="320" width="150" height="72" rx="14" fill="#23252b" stroke="#3a3d46" stroke-width="2"/>
+      <text x="171" y="364" text-anchor="middle">You</text>
+
+      <rect x="306" y="320" width="230" height="72" rx="14" fill="#2b2418" stroke="#f0a640" stroke-width="2"/>
+      <text x="421" y="364" text-anchor="middle">Coordinator</text>
+
+      <rect x="596" y="276" width="200" height="64" rx="14" fill="#23252b" stroke="#3a3d46" stroke-width="2"/>
+      <text x="696" y="316" text-anchor="middle">Captain</text>
+      <rect x="596" y="372" width="200" height="64" rx="14" fill="#23252b" stroke="#3a3d46" stroke-width="2"/>
+      <text x="696" y="412" text-anchor="middle">Captain</text>
+
+      <rect x="856" y="236" width="180" height="56" rx="12" fill="#1e2a24" stroke="#4fb37a" stroke-width="2"/>
+      <text x="946" y="272" text-anchor="middle">worker</text>
+      <rect x="856" y="304" width="180" height="56" rx="12" fill="#1e2a24" stroke="#4fb37a" stroke-width="2"/>
+      <text x="946" y="340" text-anchor="middle">worker</text>
+      <rect x="856" y="400" width="180" height="56" rx="12" fill="#1e2a24" stroke="#4fb37a" stroke-width="2"/>
+      <text x="946" y="436" text-anchor="middle">worker</text>
+    </g>
+    <g stroke="#5b5e68" stroke-width="3" fill="none">
+      <path d="M246 356 H306"/>
+      <path d="M536 356 H566 V308 H596"/>
+      <path d="M566 356 V404 H596"/>
+      <path d="M796 308 H826 V264 H856"/>
+      <path d="M826 308 V332 H856"/>
+      <path d="M796 404 H826 V428 H856"/>
+    </g>
+    <g font-size="22" fill="#a6a8b0">
+      <text x="1076" y="272">PR #7 open</text>
+      <text x="1076" y="340">finished</text>
+      <text x="1076" y="436">working</text>
+    </g>
+
+    </g>
+    <text x="96" y="584" font-size="26" fill="#a6a8b0">Claude Code · Codex · pi   —   each task in its own git worktree, with its own pull request</text>
+  </g>
+</svg>

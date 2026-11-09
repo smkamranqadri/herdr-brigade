@@ -52,7 +52,7 @@ echo "# demo2" > "$RUN/extra/demo2-site/README.md"
 git -C "$RUN/extra/demo2-site" add README.md
 git -C "$RUN/extra/demo2-site" -c user.name=Test -c user.email=test@example.invalid commit -qm init
 cat > "$RUN/config.json" <<EOF
-{ "owner": "Kamran",
+{ "owner": "Sam",
   "repoRoots": ["$RUN/extra"],
   "roles": { "coordinator": $SPEC, "captain": $SPEC, "worker": $SPEC },
   "projects": [{ "name": "demo", "repo": "$RUN/repo", "baseBranch": "main"$(printf '%b' "$GITHUB_FIELD") }] }

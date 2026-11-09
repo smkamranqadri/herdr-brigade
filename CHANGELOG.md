@@ -1,0 +1,23 @@
+# Changelog
+
+## 0.1.0 (unreleased)
+
+First public release.
+
+- **Roles:** a Coordinator for the brigade, a Captain per project and a worker per task, each in its own Herdr
+  terminal. Any role runs on Claude Code, Codex or pi, with its own model, effort and permission level (`ask`, `auto`,
+  `bypass`).
+- **Projects from chat:** `find_repo` searches your repo folders, `add_project` pins the repo's GitHub origin, and
+  `update_project` changes a base branch. Tasks keep the repo and base branch they started with.
+- **Workers:** each task gets its own branch and git worktree. Workers commit through brigade, which checks the
+  worktree first, so commits work inside Codex's sandbox too. Workers report when they finish or need a decision, and
+  can message their Captain.
+- **Pull requests:** `create_pull_request` pushes the task branch to the pinned GitHub repo and opens or updates its
+  pull request. Merged or closed pull requests are never pushed to again, and `list_tasks` shows each one's live state.
+- **Project notes:** lasting preferences that every new worker starts with, within a budget. Workers suggest notes
+  and the Captain settles them in a retro.
+- **The Brigade panel** for herdr-app: agents, tasks, PR chips, note counts and the latest events. A Start button,
+  and a click on a row opens that agent over your tab.
+- **Safety:** per-role tools with project scope checks, a locked config store, pushes only to the pinned repo with no
+  force, tags or submodules, and no git hooks for sandboxed Codex workers. See `SECURITY.md`.
+- Tested with hc 0.1.19, herdr-app 0.1.14, Claude Code 2.1.319, Codex 0.167.0 and pi 1.5.0.
