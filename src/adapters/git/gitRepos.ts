@@ -1,8 +1,9 @@
 import type { Dirent } from "node:fs";
 import { readdir, realpath } from "node:fs/promises";
 import path from "node:path";
-import type { FoundRepo, RepoFacts, Repos } from "../../application/ports.ts";
+import type { FoundRepo, RepoFacts, Repos, RepoStatus } from "../../application/ports.ts";
 import { git } from "./git.ts";
+import { readRepoStatus } from "./repoStatus.ts";
 
 /** find() stops at whichever limit comes first. */
 export interface RepoSearchLimits {
@@ -65,7 +66,13 @@ export class GitRepos implements Repos {
     const isRoot = (await realpath(top)) === (await realpath(folder));
     const currentBranch = (await git(["-C", folder, "branch", "--show-current"], "branch")) || null;
     const origin = await git(["-C", folder, "remote", "get-url", "origin"], "remote get-url").catch(() => null);
-    return { isRoot, currentBranch, origin };
+    const head = await git(
+      ["-C", folder, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+      "symbolic-ref",
+    )
+      .then((ref) => ref.replace(/^origin\//, "") || null)
+      .catch(() => null);
+    return { isRoot, currentBranch, origin, originHead: head };
   }
 
   async hasBranch(folder: string, branch: string): Promise<boolean> {
@@ -73,5 +80,9 @@ export class GitRepos implements Repos {
       () => true,
       () => false,
     );
+  }
+
+  status(folder: string): Promise<RepoStatus> {
+    return readRepoStatus(folder);
   }
 }

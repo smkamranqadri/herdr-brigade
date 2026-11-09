@@ -173,6 +173,33 @@ describe("HcTerminals.find", () => {
   });
 });
 
+describe("HcTerminals.all", () => {
+  it("lists every live terminal with its program, status, place and folder, and skips finished ones", async () => {
+    const ls = {
+      terminals: [
+        {
+          address: "t3x",
+          agent: "claude-code",
+          cwd: "/r/shop",
+          state: "live",
+          status: "idle",
+          where: "shop / Claude Code",
+        },
+        { address: "t2b", agent: "bash", cwd: "/r/blog", state: "live", where: "blog / blog" },
+        { address: "t9", agent: "codex", cwd: "/r/x", state: "finished", status: "done" },
+        { address: "t17x", agent: "claude-code", cwd: "/s/coordinator", state: "live", status: { state: "working" } },
+      ],
+    };
+    const { terminals, calls } = scripted({ ls: JSON.stringify(ls) });
+    expect(await terminals.all()).toEqual([
+      { address: "t3x", program: "claude-code", status: "idle", where: "shop / Claude Code", cwd: "/r/shop" },
+      { address: "t2b", program: "bash", status: null, where: "blog / blog", cwd: "/r/blog" },
+      { address: "t17x", program: "claude-code", status: "working", where: null, cwd: "/s/coordinator" },
+    ]);
+    expect(calls).toEqual([["ls", "--json"]]);
+  });
+});
+
 describe("HcTerminals.send", () => {
   const starting = 'ERR hc send failed: {"error":{"kind":"unavailable","message":"t3 is still starting"}}';
   const working = JSON.stringify({ status: { app: "claude-code", state: "working" }, turn: 4 });

@@ -94,6 +94,7 @@ Project notes are lasting preferences, such as *"remember for shop-site: designs
 - **Commits that work in any sandbox.** Workers commit through brigade, which first checks that the worktree, repo and branch are still the task's own.
 - **Pull requests, pinned.** A worker pushes only its own branch, only to the project's pinned GitHub repo, never with force, and never to a merged or closed PR's branch. `list_tasks` reads each PR's live state from GitHub.
 - **Project notes with a retro.** Lasting preferences reach every new worker, within a budget. The Captain settles workers' suggestions.
+- **Status without a shell.** Ask the Coordinator about any project: brigade reads the repo's branch, changes, commits, worktrees and open pull requests itself. It can also list every agent running in Herdr, yours too.
 - **A live panel.** Agents, tasks, PR chips, note counts and the latest events, with a Start button and click-to-open.
 - **Mix harnesses.** Any role on Claude Code, Codex or pi.
 

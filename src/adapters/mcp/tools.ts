@@ -8,6 +8,7 @@ import type { AgentContext, Role } from "../../domain/agent.ts";
 import { BrigadeError } from "../../domain/errors.ts";
 import { optStr, schema, str, type Args } from "./args.ts";
 import { captainNoteTools, coordinatorNoteTools, workerNoteTools } from "./noteTools.ts";
+import { captainStatusTools, coordinatorStatusTools } from "./statusTools.ts";
 import type { Tool } from "./protocol.ts";
 
 function coordinatorTools(deps: Deps, ctx: AgentContext): Record<string, Tool> {
@@ -154,8 +155,13 @@ const BY_ROLE: Readonly<Record<Role, (deps: Deps, ctx: AgentContext) => Record<s
     ...coordinatorTools(deps, ctx),
     ...projectTools(deps, ctx),
     ...coordinatorNoteTools(deps, ctx),
+    ...coordinatorStatusTools(deps, ctx),
   }),
-  captain: (deps, ctx) => ({ ...captainTools(deps, ctx), ...captainNoteTools(deps, ctx) }),
+  captain: (deps, ctx) => ({
+    ...captainTools(deps, ctx),
+    ...captainNoteTools(deps, ctx),
+    ...captainStatusTools(deps, ctx),
+  }),
   worker: (deps, ctx) => ({ ...workerTools(deps, ctx), ...workerGitTools(deps, ctx), ...workerNoteTools(deps, ctx) }),
 };
 

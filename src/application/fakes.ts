@@ -7,6 +7,9 @@ import type {
   CommitTarget,
   Deps,
   FoundRepo,
+  HerdrTerminal,
+  OpenPullRequest,
+  RepoStatus,
   PullRequest,
   Ids,
   RepoFacts,
@@ -58,6 +61,18 @@ class FakeTerminals {
   find(labels: Readonly<Record<string, string>>): Promise<TerminalInfo[]> {
     const hits = this.live.filter((t) => Object.entries(labels).every(([k, v]) => t.labels[k] === v));
     return Promise.resolve(hits.map(({ address, name, status }) => ({ address, name, status })));
+  }
+  /** The owner's own terminals, outside the brigade, that all() lists too. */
+  readonly others: HerdrTerminal[] = [];
+  all(): Promise<HerdrTerminal[]> {
+    const brigade = this.live.map(({ address, status, labels }) => ({
+      address,
+      program: labels.harness ?? null,
+      status,
+      where: null,
+      cwd: null,
+    }));
+    return Promise.resolve([...this.others, ...brigade]);
   }
 }
 
@@ -131,7 +146,10 @@ class FakeConfigStore {
 
 /** Folders the fake knows: absent means "not a git repo". */
 class FakeRepos {
-  readonly folders = new Map<string, RepoFacts & { branches: string[] }>();
+  readonly folders = new Map<
+    string,
+    Omit<RepoFacts, "originHead"> & { originHead?: string | null; branches: string[] }
+  >();
   readonly found: FoundRepo[] = [];
   readonly searches: { roots: readonly string[]; name: string }[] = [];
   find(roots: readonly string[], name: string): Promise<FoundRepo[]> {
@@ -140,10 +158,21 @@ class FakeRepos {
   }
   inspect(folder: string): Promise<RepoFacts | null> {
     const f = this.folders.get(folder);
-    return Promise.resolve(f ? { isRoot: f.isRoot, currentBranch: f.currentBranch, origin: f.origin } : null);
+    if (!f) return Promise.resolve(null);
+    return Promise.resolve({
+      isRoot: f.isRoot,
+      currentBranch: f.currentBranch,
+      origin: f.origin,
+      originHead: f.originHead ?? null,
+    });
   }
   hasBranch(folder: string, branch: string): Promise<boolean> {
     return Promise.resolve(this.folders.get(folder)?.branches.includes(branch) ?? false);
+  }
+  readonly statuses = new Map<string, RepoStatus>();
+  status(folder: string): Promise<RepoStatus> {
+    const s = this.statuses.get(folder);
+    return s ? Promise.resolve(s) : Promise.reject(new Error(`git status failed: ${folder} is not a git repo`));
   }
 }
 
@@ -187,6 +216,15 @@ class FakeGitHub {
       return Promise.resolve(pr);
     };
     return this.viewsWaitFor ? this.viewsWaitFor.then(answer) : answer();
+  }
+  failLists = false;
+  openPullRequests(repo: string): Promise<OpenPullRequest[]> {
+    this.calls.push(`open ${repo}`);
+    if (this.failLists) return Promise.reject(new Error("gh pr list failed: network"));
+    const open = this.prs.filter((p) => p.repo === repo && p.state === "open");
+    return Promise.resolve(
+      open.map((p) => ({ number: p.number, title: `PR ${p.number}`, head: p.head, isDraft: false })),
+    );
   }
 }
 

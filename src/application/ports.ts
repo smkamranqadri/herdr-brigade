@@ -43,6 +43,19 @@ export interface Terminals {
   send(address: string, text: string): Promise<void>;
   /** Live terminals that carry all of these labels. */
   find(labels: Readonly<Record<string, string>>): Promise<TerminalInfo[]>;
+  /** Every live terminal on this machine, brigade's or not: the owner's own Herdr agents and shells too. */
+  all(): Promise<HerdrTerminal[]>;
+}
+
+/** One live terminal as Herdr shows it. */
+export interface HerdrTerminal {
+  readonly address: string;
+  /** The program Herdr recognised (claude-code, codex, bash...), or null. */
+  readonly program: string | null;
+  readonly status: string | null;
+  /** Herdr's "space / tab" for it, or null for a terminal without a pane. */
+  readonly where: string | null;
+  readonly cwd: string | null;
 }
 
 /** How an agent starts brigade's MCP server. */
@@ -135,6 +148,15 @@ export interface GitHub {
   create(repo: string, pr: { head: string; base: string; title: string; body: string }): Promise<PullRequest>;
   edit(repo: string, num: number, pr: { title: string; body: string }): Promise<void>;
   view(repo: string, num: number): Promise<PullRequest>;
+  /** The open PRs of `repo`, newest first, at most 20. */
+  openPullRequests(repo: string): Promise<OpenPullRequest[]>;
+}
+
+export interface OpenPullRequest {
+  readonly number: number;
+  readonly title: string;
+  readonly head: string;
+  readonly isDraft: boolean;
 }
 
 /** What brigade needs to know about a folder before it becomes a project. */
@@ -144,6 +166,8 @@ export interface RepoFacts {
   readonly currentBranch: string | null;
   /** The fetch URL of `origin`, or null without one. */
   readonly origin: string | null;
+  /** The branch `origin`'s HEAD names (the repo's default branch on its host), or null when git doesn't know it. */
+  readonly originHead: string | null;
 }
 
 export interface FoundRepo {
@@ -158,6 +182,26 @@ export interface Repos {
   /** Facts about a folder, or null when it is not a git repo. */
   inspect(folder: string): Promise<RepoFacts | null>;
   hasBranch(folder: string, branch: string): Promise<boolean>;
+  /** The repo's state, read without changing anything (no index refresh, no lock). */
+  status(folder: string): Promise<RepoStatus>;
+}
+
+export interface RepoStatus {
+  readonly branch: string | null;
+  /** The upstream branch and how far HEAD is ahead of and behind it, or null without one. */
+  readonly upstream: { readonly name: string; readonly ahead: number; readonly behind: number } | null;
+  readonly changes: {
+    readonly staged: number;
+    readonly unstaged: number;
+    readonly untracked: number;
+    /** The first few changed paths. */
+    readonly files: readonly string[];
+  };
+  /** The last few commits on HEAD, newest first. */
+  readonly commits: readonly { readonly sha: string; readonly subject: string; readonly date: string }[];
+  /** Local branches, most recently committed first. */
+  readonly branches: readonly { readonly name: string; readonly date: string }[];
+  readonly worktrees: readonly { readonly path: string; readonly branch: string | null }[];
 }
 
 /** Port to brigade's config file. Every write is serialized across processes and lands whole. */

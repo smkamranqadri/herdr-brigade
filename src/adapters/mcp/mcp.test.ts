@@ -134,6 +134,8 @@ describe("toolsFor", () => {
       "add_project",
       "update_project",
       "save_note",
+      "repo_status",
+      "herdr_agents",
     ]);
     expect(Object.keys(toolsFor(deps, ctx({ role: "captain", project: "shop" })))).toEqual([
       "create_task",
@@ -146,6 +148,7 @@ describe("toolsFor", () => {
       "remove_note",
       "list_suggestions",
       "resolve_suggestion",
+      "repo_status",
     ]);
     expect(Object.keys(toolsFor(deps, ctx({ role: "worker" })))).toEqual([
       "finish",

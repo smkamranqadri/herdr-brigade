@@ -41,6 +41,8 @@ are the privileged part, and the guards below are about them.
   manager (such as lefthook) runs commands from files the worker can edit. So those commits run no hooks, and the
   worker is told to run the repo's checks itself. Claude Code and pi workers have no sandbox, so their commits run your
   hooks as usual. See `docs/decisions.md`.
+- **The Coordinator can see all your terminals.** `herdr_agents` lists every live terminal in Herdr with its program,
+  status, space/tab and folder, so the Coordinator's model sees those folder names too. It reads nothing inside them.
 - **The event log is plain text.** `~/.local/state/herdr-brigade/events.jsonl` keeps tasks, messages, notes and pull
   request links. Don't put secrets in requests or notes.
 

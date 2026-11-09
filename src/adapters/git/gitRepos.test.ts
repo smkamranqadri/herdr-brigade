@@ -49,7 +49,12 @@ describe("GitRepos.inspect and hasBranch", () => {
       isRoot: true,
       currentBranch: "main",
       origin: "git@github.com:acme/shop.git",
+      originHead: null,
     });
+    // A clone records origin's default branch in refs/remotes/origin/HEAD.
+    execFileSync("git", ["-C", repo, "update-ref", "refs/remotes/origin/develop", "HEAD"]);
+    execFileSync("git", ["-C", repo, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop"]);
+    expect(await repos.inspect(repo)).toMatchObject({ originHead: "develop" });
     expect(await repos.inspect(path.join(repo, "src"))).toMatchObject({ isRoot: false });
     expect(await repos.inspect(tmpdir())).toBeNull();
     expect([await repos.hasBranch(repo, "main"), await repos.hasBranch(repo, "nope")]).toEqual([true, false]);

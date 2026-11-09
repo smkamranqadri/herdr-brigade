@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **`repo_status`** for the Coordinator and Captains: a project's branch, ahead/behind, uncommitted changes, recent
+  commits, branches, worktrees and open pull requests, read by brigade itself without changing anything. The routing
+  roles have no shell, so status questions no longer need a worker or a guess.
+- **`herdr_agents`** for the Coordinator: every live terminal in Herdr, your own agents and shells too, with status,
+  space/tab and folder.
+- A Captain now answers every Coordinator request through `report`, also when it answers without a worker. Before,
+  such an answer stayed in the Captain's terminal and never reached the Coordinator.
+- `add_project` takes the repo's default branch (origin's HEAD, else `main`, else `master`) as the base branch, not
+  whatever branch is checked out.
+
 ## 1.0.0 (2026-11-09)
 
 First public release.

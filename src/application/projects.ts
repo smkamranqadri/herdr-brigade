@@ -3,7 +3,7 @@ import { withBaseBranch, withProject } from "../domain/config.ts";
 import { BrigadeError } from "../domain/errors.ts";
 import { githubRepoOf } from "../domain/github.ts";
 import { record } from "./launch.ts";
-import type { Deps } from "./ports.ts";
+import type { Deps, RepoFacts } from "./ports.ts";
 
 function onlyCoordinator(ctx: AgentContext): void {
   if (ctx.role !== "coordinator") throw new BrigadeError("Only the Coordinator manages projects.");
@@ -17,6 +17,17 @@ export async function findRepo(deps: Deps, ctx: AgentContext, input: { name: str
   if (!found.length)
     return `No git repo named like "${input.name}" in ${roots.join(", ")}. Ask the owner for the path.`;
   return found.map((r) => `${r.name}: ${r.path}`).join("\n");
+}
+
+/**
+ * The base branch when none is given: the repo's default branch (origin's HEAD, else main, else master), never a
+ * feature branch that happens to be checked out. The checked-out branch is the last resort.
+ */
+async function defaultBranch(deps: Deps, repo: string, facts: RepoFacts): Promise<string | null> {
+  for (const branch of [facts.originHead, "main", "master"]) {
+    if (branch && (await deps.repos.hasBranch(repo, branch))) return branch;
+  }
+  return facts.currentBranch;
 }
 
 /**
@@ -34,7 +45,7 @@ export async function addProject(
   const facts = await deps.repos.inspect(repo);
   if (!facts) throw new BrigadeError(`${repo} is not a git repo.`);
   if (!facts.isRoot) throw new BrigadeError(`${repo} is inside a git repo; give the repo's top folder.`);
-  const baseBranch = input.baseBranch ?? facts.currentBranch;
+  const baseBranch = input.baseBranch ?? (await defaultBranch(deps, repo, facts));
   if (!baseBranch) throw new BrigadeError(`${repo} is not on a branch; give the base branch.`);
   if (!(await deps.repos.hasBranch(repo, baseBranch))) throw new BrigadeError(`${repo} has no branch "${baseBranch}".`);
   const github = facts.origin ? githubRepoOf(facts.origin) : null;

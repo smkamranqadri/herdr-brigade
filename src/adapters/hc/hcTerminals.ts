@@ -1,5 +1,12 @@
 import { execFile } from "node:child_process";
-import type { TerminalInfo, TerminalLaunch, Terminals, TrustOutcome, TrustPrompt } from "../../application/ports.ts";
+import type {
+  HerdrTerminal,
+  TerminalInfo,
+  TerminalLaunch,
+  Terminals,
+  TrustOutcome,
+  TrustPrompt,
+} from "../../application/ports.ts";
 
 /** Runs hc with these arguments and returns what it printed. */
 export type HcRunner = (args: readonly string[]) => Promise<string>;
@@ -43,6 +50,10 @@ interface HcTerminalJson {
   address: string;
   name?: string;
   status?: string | { state?: string } | null;
+  agent?: string | null;
+  where?: string | null;
+  cwd?: string | null;
+  state?: string;
 }
 
 function statusWord(status: unknown): string | null {
@@ -169,9 +180,25 @@ export class HcTerminals implements Terminals {
 
   // `hc ls --json` leaves labels out of its output, so hc does the matching.
   async find(labels: Readonly<Record<string, string>>): Promise<TerminalInfo[]> {
-    const args = ["ls", "--json", ...Object.entries(labels).flatMap(([k, v]) => ["--label", `${k}=${v}`])];
-    const parsed = JSON.parse(await this.run(args)) as { terminals?: HcTerminalJson[] } | HcTerminalJson[];
-    const all = Array.isArray(parsed) ? parsed : (parsed.terminals ?? []);
+    const all = await this.ls(Object.entries(labels).flatMap(([k, v]) => ["--label", `${k}=${v}`]));
     return all.map((t) => ({ address: t.address, name: t.name ?? "", status: statusWord(t.status) }));
+  }
+
+  async all(): Promise<HerdrTerminal[]> {
+    return (await this.ls([]))
+      .filter((t) => t.state === undefined || t.state === "live")
+      .map((t) => ({
+        address: t.address,
+        program: t.agent ?? null,
+        status: statusWord(t.status),
+        where: t.where ?? null,
+        cwd: t.cwd ?? null,
+      }));
+  }
+
+  private async ls(filters: readonly string[]): Promise<HcTerminalJson[]> {
+    const parsed = JSON.parse(await this.run(["ls", "--json", ...filters])) as
+      { terminals?: HcTerminalJson[] } | HcTerminalJson[];
+    return Array.isArray(parsed) ? parsed : (parsed.terminals ?? []);
   }
 }

@@ -34,6 +34,27 @@ describe("addProject", () => {
     ]);
   });
 
+  it("takes the repo's default branch, not a feature branch that happens to be checked out", async () => {
+    const cases = [
+      [{ originHead: "develop", branches: ["spike/1.1", "develop", "main"] }, "develop"],
+      [{ originHead: null, branches: ["spike/1.1", "main", "master"] }, "main"],
+      [{ originHead: "gone", branches: ["spike/1.1", "master"] }, "master"],
+      [{ originHead: null, branches: ["spike/1.1"] }, "spike/1.1"],
+    ] as const;
+    for (const [repo, base] of cases) {
+      const f = fakeDeps();
+      f.repos.folders.set("/repos/pet", {
+        isRoot: true,
+        currentBranch: "spike/1.1",
+        origin: null,
+        ...repo,
+        branches: [...repo.branches],
+      });
+      await addProject(f.deps, coordinator, { name: "pet", repo: "/repos/pet" });
+      expect([repo, f.configStore.config.projects.at(-1)?.baseBranch]).toEqual([repo, base]);
+    }
+  });
+
   it("pins no GitHub repo for an origin elsewhere, and says it can't publish", async () => {
     const f = withBlogRepo("https://gitlab.com/acme/blog.git");
     expect(await addProject(f.deps, coordinator, { name: "blog", repo: "/repos/blog", baseBranch: "release" })).toBe(
@@ -57,7 +78,7 @@ describe("addProject", () => {
   it("refuses a folder inside a repo, a detached repo with no base given, and any role but the Coordinator", async () => {
     const f = withBlogRepo();
     f.repos.folders.set("/repos/blog/src", { isRoot: false, currentBranch: "main", origin: null, branches: ["main"] });
-    f.repos.folders.set("/repos/detached", { isRoot: true, currentBranch: null, origin: null, branches: ["main"] });
+    f.repos.folders.set("/repos/detached", { isRoot: true, currentBranch: null, origin: null, branches: ["trunk"] });
     await expect(addProject(f.deps, coordinator, { name: "src", repo: "/repos/blog/src" })).rejects.toThrow(
       "is inside a git repo",
     );

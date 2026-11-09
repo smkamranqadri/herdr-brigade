@@ -113,3 +113,36 @@ describe("GhCli", () => {
     ).rejects.toThrow("gh pr create didn't print the new pull request's URL");
   });
 });
+
+describe("GhCli.openPullRequests", () => {
+  it("lists the repo's open PRs with their title, head and draft flag", async () => {
+    const list = [
+      { number: 9, title: "Fix login", headRefName: "brigade/login-1", isDraft: false },
+      { number: 8, title: "WIP: dark mode", headRefName: "wip", isDraft: true },
+    ];
+    const { gh, calls } = scripted({ "pr list": JSON.stringify(list) });
+    expect(await gh.openPullRequests("acme/shop")).toEqual([
+      { number: 9, title: "Fix login", head: "brigade/login-1", isDraft: false },
+      { number: 8, title: "WIP: dark mode", head: "wip", isDraft: true },
+    ]);
+    expect(calls).toEqual([
+      [
+        "pr",
+        "list",
+        "--repo",
+        "acme/shop",
+        "--state",
+        "open",
+        "--limit",
+        "20",
+        "--json",
+        "number,title,headRefName,isDraft",
+      ],
+    ]);
+  });
+
+  it("fails loudly on a PR it can't read", async () => {
+    const { gh } = scripted({ "pr list": JSON.stringify([{ number: 9, title: "x" }]) });
+    await expect(gh.openPullRequests("acme/shop")).rejects.toThrow("gh returned a pull request brigade can't read");
+  });
+});

@@ -1,6 +1,6 @@
 // GitHub through the gh CLI, with the owner's existing login. Brigade never reads, prints or passes a token.
 import { execFile } from "node:child_process";
-import type { GitHub, PullRequest } from "../../application/ports.ts";
+import type { GitHub, OpenPullRequest, PullRequest } from "../../application/ports.ts";
 import type { PrState } from "../../domain/events.ts";
 
 /** Runs gh with these arguments and returns what it printed. */
@@ -36,6 +36,16 @@ function toPullRequest(raw: unknown): PullRequest {
     throw new Error(`gh returned a pull request brigade can't read: ${JSON.stringify(raw).slice(0, 200)}`);
   }
   return { number, url, state, head, base, headSha: text(f.get("headRefOid")), mergedAt: text(f.get("mergedAt")) };
+}
+
+/** One open PR from gh's JSON, checked field by field. */
+function toOpenPullRequest(raw: unknown): OpenPullRequest {
+  const f = new Map<string, unknown>(Object.entries(typeof raw === "object" && raw !== null ? raw : {}));
+  const [number, title, head] = [f.get("number"), text(f.get("title")), text(f.get("headRefName"))];
+  if (typeof number !== "number" || title === null || !head) {
+    throw new Error(`gh returned a pull request brigade can't read: ${JSON.stringify(raw).slice(0, 200)}`);
+  }
+  return { number, title, head, isDraft: f.get("isDraft") === true };
 }
 
 export class GhCli implements GitHub {
@@ -91,5 +101,24 @@ export class GhCli implements GitHub {
 
   async view(repo: string, num: number): Promise<PullRequest> {
     return toPullRequest(JSON.parse(await this.run(["pr", "view", String(num), "--repo", repo, "--json", FIELDS])));
+  }
+
+  async openPullRequests(repo: string): Promise<OpenPullRequest[]> {
+    const fields = "number,title,headRefName,isDraft";
+    const out = await this.run([
+      "pr",
+      "list",
+      "--repo",
+      repo,
+      "--state",
+      "open",
+      "--limit",
+      LIST_LIMIT,
+      "--json",
+      fields,
+    ]);
+    const list: unknown = JSON.parse(out);
+    if (!Array.isArray(list)) throw new Error("gh pr list didn't return a list");
+    return list.map(toOpenPullRequest);
   }
 }
