@@ -92,7 +92,11 @@ async function modInstall(paths: Paths): Promise<string> {
     start,
   });
   const check = await herdrApp(paths).check(target);
-  return `Installed the Brigade panel in ${target}.\n${check}`;
+  return [
+    `Installed the Brigade panel in ${target}.`,
+    check,
+    'Open it as a window with "brigade panel". A button beside Automations is optional: it needs the auto-tabs mod and two config edits (docs/herdr-app.md).',
+  ].join("\n");
 }
 
 async function status(paths: Paths): Promise<string> {

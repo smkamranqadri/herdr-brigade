@@ -178,3 +178,15 @@ The owner watched while `brigade start` started a Claude Coordinator in a test f
 
 The panel, pointed at a test config with no Coordinator, showed "No Coordinator is running" and a **Start brigade** button (screenshot). The owner clicked it: the button said "Starting…", then the Coordinator opened in the peek overlay, and the panel listed it. The run's event log recorded a new `agent_started` for that Coordinator (`t17q`). The Coordinator was then closed, its trust entry removed (with a backup), and the panel pointed back at the real brigade.
 
+## 2026-11-09: the owner's first real use, and its fixes
+
+The owner started a real brigade, added seven projects by chat, and asked for a status report on one. Three problems:
+
+- **The Captain's answer never reached the Coordinator.** It answered in its own terminal; its prompt said to call `report` only for a worker's result.
+- **Neither routing role can run a command,** so the Captain guessed the status from `.git` files, and the Coordinator couldn't list the owner's Herdr agents.
+- **`add_project` took the checked-out branch as the base branch** (`lore-2.0`, `spike/1.1`).
+
+Fixes: the Captain prompt routes every Coordinator request through `report`; new read-only tools `repo_status` and `herdr_agents`; the repo's default branch as the base. A real-git test of `repo_status` also found that the `git()` wrapper trimmed the first status line's leading space, so an unstaged file read as staged.
+
+Real check (Claude, `claude-sonnet-5-5` low): `EXPECT_TASKS=0 scripts/e2e.sh claude "Ask the demo Captain which branch the demo repo is on, its latest commit, and what its README says. No worker is needed: the Captain can answer from the repo itself."` In 42 seconds the Captain called `repo_status`, read the README, and called `report`; the Coordinator received the report and passed it on. `brigade panel` opened the panel as a window, without the auto-tabs mod (screenshot), and closed it again.
+
