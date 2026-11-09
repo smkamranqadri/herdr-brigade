@@ -159,6 +159,19 @@ describe("notes in the panel", () => {
       text: "again",
     },
     { at: "8", kind: "note_added", note: "n9", project: "blog", text: "x", source: "owner", task: null },
+    { at: "9", kind: "note_changed", note: "n1", project: "shop", text: "a, corrected" },
+    { at: "10", kind: "note_suggested", suggestion: "s3", project: "shop", task: "t", text: "e", why: "w" },
+    {
+      at: "11",
+      kind: "suggestion_resolved",
+      suggestion: "s3",
+      project: "shop",
+      outcome: "merge",
+      reason: "r",
+      note: "n1",
+      text: "a, merged",
+      base: "a",
+    },
   ];
 
   it("counts notes and open suggestions the same way brigade's own fold does", () => {
@@ -167,7 +180,7 @@ describe("notes in the panel", () => {
       notes: domain.notes.length,
       openSuggestions: domain.suggestions.filter((s) => s.outcome === null).length,
     });
-    expect(noteCounts(NOTE_EVENTS, "shop")).toEqual({ notes: 2, openSuggestions: 1 });
+    expect(noteCounts(NOTE_EVENTS, "shop")).toEqual({ notes: 2, openSuggestions: 2 });
   });
 
   it("shows a configured project with notes but no Captain or task", () => {

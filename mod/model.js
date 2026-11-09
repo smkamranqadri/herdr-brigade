@@ -72,23 +72,33 @@ export function derivePrs(events) {
   return prs;
 }
 
+/** Settles one resolution the way src/domain/notes.ts does: the first wins, and a merge needs its note unchanged. */
+function settle(texts, open, settled, e) {
+  if (!open.has(e.suggestion)) return;
+  if (e.outcome === "merge") {
+    const target = texts.get(e.note);
+    if (target === undefined || (e.base !== undefined && target !== e.base)) return;
+    texts.set(e.note, e.text);
+  }
+  if (e.outcome === "accept" && e.note !== null && !texts.has(e.note)) texts.set(e.note, e.text);
+  open.delete(e.suggestion);
+  settled.add(e.suggestion);
+}
+
 /** A project's note count and open suggestions, folded as src/domain/notes.ts does (a test checks they agree). */
 export function noteCounts(events, project) {
-  const notes = new Set();
+  const texts = new Map();
   const open = new Set();
   const settled = new Set();
   for (const e of events) {
     if (e.project !== project) continue;
-    if (e.kind === "note_added") notes.add(e.note);
-    if (e.kind === "note_removed") notes.delete(e.note);
+    if (e.kind === "note_added") texts.set(e.note, e.text);
+    if (e.kind === "note_changed" && texts.has(e.note)) texts.set(e.note, e.text);
+    if (e.kind === "note_removed") texts.delete(e.note);
     if (e.kind === "note_suggested" && !settled.has(e.suggestion)) open.add(e.suggestion);
-    if (e.kind === "suggestion_resolved" && open.has(e.suggestion)) {
-      open.delete(e.suggestion);
-      settled.add(e.suggestion);
-      if (e.outcome === "accept" && e.note !== null) notes.add(e.note);
-    }
+    if (e.kind === "suggestion_resolved") settle(texts, open, settled, e);
   }
-  return { notes: notes.size, openSuggestions: open.size };
+  return { notes: texts.size, openSuggestions: open.size };
 }
 
 /** Project names from config.json's text, or none when it can't be read. */

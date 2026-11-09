@@ -75,6 +75,11 @@ export type BrigadeEvent =
       readonly note: string | null;
       /** The note's text after an accept or a merge; null for a reject. */
       readonly text: string | null;
+      /**
+       * merge: the note's text the merge was based on. The merge applies only while the note still has it; otherwise
+       * the suggestion stays open. Merges recorded before this field existed apply as they are.
+       */
+      readonly base?: string;
     }
   | {
       readonly at: string;

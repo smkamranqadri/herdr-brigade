@@ -41,28 +41,35 @@ const CHARS_PER_TOKEN = 4;
 
 type Notes = Map<string, Note>;
 
-function resolve(
-  notes: Notes,
-  suggestions: Map<string, Suggestion>,
-  e: Extract<BrigadeEvent, { kind: "suggestion_resolved" }>,
-): void {
+type Resolution = Extract<BrigadeEvent, { kind: "suggestion_resolved" }>;
+
+/** The note a merge changes, while it exists and still has the text the merge was based on. */
+function mergeTarget(notes: Notes, e: Resolution): Note | null {
+  const target = e.note === null ? undefined : notes.get(e.note);
+  return target !== undefined && (e.base === undefined || target.text === e.base) ? target : null;
+}
+
+/** A merge settles its suggestion only while its note still has the text the merge was based on. */
+function merge(notes: Notes, suggestions: Map<string, Suggestion>, s: Suggestion, e: Resolution): void {
+  const target = mergeTarget(notes, e);
+  if (target === null || e.text === null) return;
+  suggestions.set(s.id, { ...s, outcome: e.outcome, reason: e.reason });
+  notes.set(target.id, { ...target, text: e.text, changedAt: e.at });
+}
+
+function resolve(notes: Notes, suggestions: Map<string, Suggestion>, e: Resolution): void {
   const s = suggestions.get(e.suggestion);
   // The first resolution wins: a retry or a race can't apply one twice.
   if (!s || s.outcome !== null) return;
-  suggestions.set(e.suggestion, { ...s, outcome: e.outcome, reason: e.reason });
-  if (e.note === null || e.text === null) return;
-  if (e.outcome === "accept" && !notes.has(e.note)) {
-    notes.set(e.note, {
-      id: e.note,
-      project: s.project,
-      text: e.text,
-      source: "suggestion",
-      task: s.task,
-      changedAt: e.at,
-    });
+  if (e.outcome === "merge") {
+    merge(notes, suggestions, s, e);
+    return;
   }
-  const target = notes.get(e.note);
-  if (e.outcome === "merge" && target) notes.set(e.note, { ...target, text: e.text, changedAt: e.at });
+  suggestions.set(e.suggestion, { ...s, outcome: e.outcome, reason: e.reason });
+  if (e.outcome === "accept" && e.note !== null && e.text !== null && !notes.has(e.note)) {
+    const { project, task } = s;
+    notes.set(e.note, { id: e.note, project, text: e.text, source: "suggestion", task, changedAt: e.at });
+  }
 }
 
 function applyNote(notes: Notes, e: BrigadeEvent): void {

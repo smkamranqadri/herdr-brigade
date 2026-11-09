@@ -142,6 +142,25 @@ describe("the notes retro", () => {
   });
 });
 
+describe("a merge racing a change", () => {
+  it("fails and leaves the suggestion open when the note changed after the merge read it", async () => {
+    const { f, worker } = await withTask();
+    await addNote(f.deps, captain, { text: "Little text" });
+    await suggestNote(f.deps, worker, { text: "Less text", why: "w" });
+    const merge = { suggestion: "sugg-000003", outcome: "merge", reason: "same", note: "note-000002" } as const;
+    const [changed, merged] = await Promise.allSettled([
+      changeNote(f.deps, captain, { note: "note-000002", text: "Little text, big type" }),
+      resolveSuggestion(f.deps, captain, { ...merge, text: "Very little text" }),
+    ]);
+    expect(changed).toEqual({ status: "fulfilled", value: "Changed note note-000002." });
+    expect(merged.status === "rejected" && String(merged.reason)).toBe(
+      "BrigadeError: Note note-000002 changed or was removed while you merged, so nothing was merged and sugg-000003 is still open. Read the notes again and retry.",
+    );
+    expect(await readNotes(f.deps, captain)).toBe("note-000002 [owner] Little text, big type");
+    expect(await listSuggestions(f.deps, captain)).toContain("sugg-000003");
+  });
+});
+
 describe("delivery to workers", () => {
   it("puts the project's notes in a new worker's prompt as preferences, never permissions", async () => {
     const f = fakeDeps();

@@ -78,6 +78,36 @@ describe("deriveNotes", () => {
     ]);
   });
 
+  it("applies a merge only while its note still has the text it was based on; otherwise the suggestion stays open", () => {
+    const merge = (base: string | undefined, at: string): BrigadeEvent => ({
+      ...resolved("s1", "merge", "n1", "Merged text", at),
+      ...(base === undefined ? {} : { base }),
+    });
+    const changed: BrigadeEvent = { at: "4", kind: "note_changed", note: "n1", project: "shop", text: "Corrected" };
+    const lost = deriveNotes(
+      [added("n1", "Little text"), suggested("s1", "Less"), changed, merge("Little text", "5")],
+      "shop",
+    );
+    expect(lost.notes.map((n) => n.text)).toEqual(["Corrected"]);
+    expect(lost.suggestions.map((s) => s.outcome)).toEqual([null]);
+    const removed: BrigadeEvent = { at: "4", kind: "note_removed", note: "n1", project: "shop" };
+    const gone = deriveNotes(
+      [added("n1", "Little text"), suggested("s1", "Less"), removed, merge("Little text", "5")],
+      "shop",
+    );
+    expect(gone.suggestions.map((s) => s.outcome)).toEqual([null]);
+    const fits = deriveNotes(
+      [added("n1", "Little text"), suggested("s1", "Less"), changed, merge("Corrected", "5")],
+      "shop",
+    );
+    expect(fits.notes.map((n) => n.text)).toEqual(["Merged text"]);
+    const old = deriveNotes(
+      [added("n1", "Little text"), suggested("s1", "Less"), changed, merge(undefined, "5")],
+      "shop",
+    );
+    expect(old.notes.map((n) => n.text)).toEqual(["Merged text"]);
+  });
+
   it("applies only the first resolution of a suggestion, so a retry or race can't add a note twice", () => {
     const { notes, suggestions } = deriveNotes(
       [

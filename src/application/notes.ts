@@ -1,6 +1,6 @@
 import type { AgentContext } from "../domain/agent.ts";
 import { BrigadeError } from "../domain/errors.ts";
-import type { SuggestionOutcome } from "../domain/events.ts";
+import type { BrigadeEvent, SuggestionOutcome } from "../domain/events.ts";
 import {
   deriveNotes,
   MAX_NOTE_CHARS,
@@ -165,9 +165,27 @@ export async function resolveSuggestion(deps: Deps, ctx: AgentContext, input: Re
     return `Accepted ${s.id} as note ${note}.${budgetWarning((await current(deps, project)).notes)}`;
   }
   if (!input.note || !input.text) throw new BrigadeError("A merge needs the note to merge into and the merged text.");
-  const target = noteIn(notes, input.note, project);
-  await record(deps, { ...base, note: target.id, text: checkText(input.text) });
-  return `Merged ${s.id} into note ${target.id}.`;
+  return mergeSuggestion(deps, base, noteIn(notes, input.note, project), input.text);
+}
+
+type Resolution = Extract<BrigadeEvent, { kind: "suggestion_resolved" }>;
+
+/** Merges into the note as it was read. If it changed before the event landed, the fold leaves the suggestion open. */
+async function mergeSuggestion(
+  deps: Deps,
+  base: Omit<Resolution, "at" | "note" | "text" | "base">,
+  target: Note,
+  text: string,
+): Promise<string> {
+  const { suggestion, project } = base;
+  await record(deps, { ...base, note: target.id, text: checkText(text), base: target.text });
+  const after = (await current(deps, project)).suggestions.find((x) => x.id === suggestion);
+  if (after?.outcome === null) {
+    throw new BrigadeError(
+      `Note ${target.id} changed or was removed while you merged, so nothing was merged and ${suggestion} is still open. Read the notes again and retry.`,
+    );
+  }
+  return `Merged ${suggestion} into note ${target.id}.`;
 }
 
 /** The notes retro for a finished task: its open suggestions, and a warning when the notes are over the budget. */
