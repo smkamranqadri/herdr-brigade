@@ -83,7 +83,7 @@ Each step is a thin slice through every layer with its tests (guide W4), the gat
 2. **Notes** (Part 2). **Done 2026-11-09** (`456706a` and the prompt fix after it, `docs/e2e-runs.md`). Real check: the owner says "remember: in demo, designs use little text and lots of white space". The note is saved, and the next task's worker prompt contains it. A worker's suggestion goes through the retro. A second run asks the Captain to note a code convention; it should start a task for `AGENTS.md` instead.
 3. **Pull requests** (Part 3). **Done 2026-11-09** (`75db161`, `docs/e2e-runs.md`). First local adapter tests, then real checks on each harness against the GitHub test repo (owner's decision 3).
 4. **Phase 1 gaps** (Part 4). **Done 2026-11-09** (`cc28ae4`, `12475e9`, `docs/e2e-runs.md`). The planned removal of the common-dir check was dropped: a test showed it is the only check that stops a forged git folder in `.git/worktrees`. The auto-focus look waits for the owner.
-5. **Review and final runs:** a fresh code review of steps 1 to 4 (Codex `gpt-6.1-sol`, medium, read-only), then a run on each harness that uses all three parts.
+5. **Review and final runs:** a fresh code review of steps 1 to 4 (Codex `gpt-6.1-sol`, medium, read-only), then a run on each harness that uses all three parts. **Done 2026-11-09** (`docs/reviews.md`, `docs/e2e-runs.md`). Still open: the auto-focus look (step 4).
 
 ## Proof matrix
 
@@ -109,7 +109,7 @@ Each step is a thin slice through every layer with its tests (guide W4), the gat
 | Tasks keep their base branch | `update_project` during a task | Yes | — |
 | Old events still read | Events from phase 1 | — | — |
 | Domain and mod agree on notes and PRs | Shared-events test | — | — |
-| Panel shows notes and PR chips | — | — | Screenshot |
+| Panel shows notes and PR chips | — | — | Screenshot (2026-11-09) |
 
 Tests that use the network or real agents stay out of the gate (guide T12).
 

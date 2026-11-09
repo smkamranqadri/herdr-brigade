@@ -152,3 +152,19 @@ Cleanup: PRs #1–#3 are closed with a comment, and their branches are deleted. 
 - **The e2e timeout path.** `WAIT_SECONDS=45 scripts/e2e.sh claude "Reply here with the single word hello. Do not create a task and do not contact any Captain."` The Coordinator replied "hello" and created no task. The script printed "timed out after 45s: the tasks did not all finish and get reported" and exited 1.
 - **Not checked yet:** auto-focus on `brigade start`, by eye, at a time the owner chooses.
 
+## 2026-11-09: phase 2 step 5, final runs on each harness
+
+One request per harness, against the GitHub test repo: "Three things. First, add the repo demo2-site as a project called demo2. Second, remember this for demo: designs use little text and lots of white space. Third, in demo add <harness>-final-<time>.txt with the single line hello from <harness>, then open a pull request for it." Each was checked from outside the agents: the run's `config.json`, the worker's instructions, and `gh pr view`.
+
+| Harness | Time | Project added | Note in the worker's instructions | PR, head = the worktree's commit |
+| --- | --- | --- | --- | --- |
+| Claude Code (`claude-sonnet-5-5`, low) | 113 s | demo2, no GitHub repo | Yes (`system-prompt.md`) | #4 OPEN, `03b633a`, 1 file |
+| Codex (`gpt-6.1-terra`, low), sandboxed | 108 s | demo2, no GitHub repo | Yes (`developer_instructions`) | #7 OPEN, `35c44c0`, 1 file |
+| pi (`openai/gpt-6.1-sol`, low) | 104 s | demo2, no GitHub repo | Yes (`system-prompt.md`) | #6 OPEN, `a8acdad`, 1 file |
+
+- **The first Codex run used another note: "text files end with one newline".** The Coordinator took it as a code convention, and the worker added it to the repo's `AGENTS.md` (PR #5, `436f8a4`, 2 files), as the prompts say. Claude saved the same words as a note. Both readings fit the prompts, so the final runs use a clear preference.
+- **The e2e script pressed Enter into a working Coordinator.** It counted only finished turns, so Claude's first turn, still running after 20 seconds, looked unstarted. It now counts a working agent as started (`2394453`). In the pi run, pi dropped its first Enter again, and the script pressed it once.
+- **The panel**, pointed at the Codex run's state, showed the demo project with 1 note, demo2 with 0 notes (from the config, with no agents), and the task's "PR #7 open" chip. The first screenshot showed the chip squeezing the task's title to an ellipsis, and "1 notes". The chip moved to the second line (`82b61b2`); a second screenshot confirmed the fix. The panel and the mod's config were restored afterwards, the config byte-identical.
+
+Cleanup: PRs #4 to #7 are closed with a comment and their branches deleted. The repo has no open PRs and only `main`.
+
