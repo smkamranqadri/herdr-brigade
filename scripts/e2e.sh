@@ -83,13 +83,19 @@ done
 [ "$sent" = yes ] || { echo "could not send the request to $COORD" >&2; exit 1; }
 
 # An agent that just started can take the pasted text but drop the Enter (seen with pi). Press it again if no turn
-# has started within 20 seconds.
-turn() { hc get "$COORD" --json | python3 -I -c 'import json,sys; print(json.load(sys.stdin).get("turn") or 0)'; }
+# has started within 20 seconds: none is working and none has finished.
+started() {
+  hc get "$COORD" --json | python3 -I -c '
+import json,sys
+t=json.load(sys.stdin); s=t.get("status")
+state=s.get("state") if isinstance(s,dict) else s
+print("yes" if state=="working" or (t.get("turn") or 0)>=1 else "no")'
+}
 for _ in $(seq 1 10); do
-  [ "$(turn)" -ge 1 ] && break
+  [ "$(started)" = yes ] && break
   timeout 2 tail -f /dev/null || true
 done
-if [ "$(turn)" -lt 1 ]; then
+if [ "$(started)" = no ]; then
   echo "no turn started; pressing Enter again"
   hc keys "$COORD" enter >/dev/null
 fi
