@@ -184,7 +184,7 @@ The owner started a real brigade, added seven projects by chat, and asked for a 
 
 - **The Captain's answer never reached the Coordinator.** It answered in its own terminal; its prompt said to call `report` only for a worker's result.
 - **Neither routing role can run a command,** so the Captain guessed the status from `.git` files, and the Coordinator couldn't list the owner's Herdr agents.
-- **`add_project` took the checked-out branch as the base branch** (`lore-2.0`, `spike/1.1`).
+- **`add_project` took the checked-out branch as the base branch,** a feature branch in two of the repos.
 
 Fixes: the Captain prompt routes every Coordinator request through `report`; new read-only tools `repo_status` and `herdr_agents`; the repo's default branch as the base. A real-git test of `repo_status` also found that the `git()` wrapper trimmed the first status line's leading space, so an unstaged file read as staged.
 

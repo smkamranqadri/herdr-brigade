@@ -36,21 +36,21 @@ describe("addProject", () => {
 
   it("takes the repo's default branch, not a feature branch that happens to be checked out", async () => {
     const cases = [
-      [{ originHead: "develop", branches: ["spike/1.1", "develop", "main"] }, "develop"],
-      [{ originHead: null, branches: ["spike/1.1", "main", "master"] }, "main"],
-      [{ originHead: "gone", branches: ["spike/1.1", "master"] }, "master"],
-      [{ originHead: null, branches: ["spike/1.1"] }, "spike/1.1"],
+      [{ originHead: "develop", branches: ["feature/dark-mode", "develop", "main"] }, "develop"],
+      [{ originHead: null, branches: ["feature/dark-mode", "main", "master"] }, "main"],
+      [{ originHead: "gone", branches: ["feature/dark-mode", "master"] }, "master"],
+      [{ originHead: null, branches: ["feature/dark-mode"] }, "feature/dark-mode"],
     ] as const;
     for (const [repo, base] of cases) {
       const f = fakeDeps();
-      f.repos.folders.set("/repos/pet", {
+      f.repos.folders.set("/repos/garden", {
         isRoot: true,
-        currentBranch: "spike/1.1",
+        currentBranch: "feature/dark-mode",
         origin: null,
         ...repo,
         branches: [...repo.branches],
       });
-      await addProject(f.deps, coordinator, { name: "pet", repo: "/repos/pet" });
+      await addProject(f.deps, coordinator, { name: "garden", repo: "/repos/garden" });
       expect([repo, f.configStore.config.projects.at(-1)?.baseBranch]).toEqual([repo, base]);
     }
   });
