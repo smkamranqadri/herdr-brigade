@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # End-to-end run with real agents (guide T12: not part of the gate; it costs model usage and needs hc).
 # Usage: scripts/e2e.sh <claude|codex|pi> "<request as the owner would type it>"
-# EXPECT_TASKS=n waits for n tasks to finish (default 1), then for the Captain's report after the last one.
+# EXPECT_TASKS=n waits for n tasks to finish (default 1), then for the Captain's report after the last one. With
+# EXPECT_TASKS=0 it waits only for a Captain's report, for requests a Captain answers without a worker.
 # GITHUB_REPO=owner/name clones that GitHub repo as the demo project and pins it, for pull-request runs.
 # Each run gets a fresh repo, config, state folder and worktrees under ~/.local/state/herdr-brigade-e2e: outside any
 # repo, so no agent picks up another project's AGENTS.md or package.json, and kept across restarts (unlike /tmp).
@@ -111,7 +112,7 @@ import json,sys
 events=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
 done=[e for e in events if e["kind"] in ("task_finished","task_asked")]
 last=max((e["at"] for e in done), default=None)
-reported=any(e["kind"]=="message_sent" and e.get("to")=="coordinator" and last and e["at"]>=last for e in events)
+reported=any(e["kind"]=="message_sent" and e.get("to")=="coordinator" and (last is None or e["at"]>=last) for e in events)
 sys.exit(0 if len({e["task"] for e in done})>=int(sys.argv[2]) and reported else 1)
 ' "$EVENTS" "$EXPECT_TASKS" && [ $(( $(date +%s) - $(stat -c %Y "$EVENTS") )) -ge 10 ]; then finished=yes; break; fi
   hc wait "$COORD" --timeout 15 >/dev/null 2>&1 || true
