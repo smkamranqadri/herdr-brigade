@@ -3,6 +3,7 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { terminals, theme, run, readTextFile, watchFolder } from "herdr";
 
+// The POC's state folder: set it to <your clone>/poc/.state before installing the POC mod.
 const STATE_DIR = "/path/to/herdr-brigade/poc/.state";
 const EVENTS_FILE = `${STATE_DIR}/events.jsonl`;
 const BRIGADE_LABEL = "poc";
