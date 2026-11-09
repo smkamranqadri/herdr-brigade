@@ -127,7 +127,7 @@ describe("live PR state", () => {
     const pushed = f.github.prs[0];
     if (!pushed) throw new Error("no pr");
     f.github.prs[0] = { ...pushed, state: "merged" };
-    const later = { ...f.deps, clock: { now: () => new Date("2026-11-08T10:05:00.000Z") } };
+    const later = { ...f.deps, clock: { ...f.deps.clock, now: () => new Date("2026-11-08T10:05:00.000Z") } };
     expect(await listTasks(later, "shop")).toBe(
       'task-000001 [shop] "Login" working (terminal t1, working, codex) PR #42 merged, checked just now (https://github.com/acme/shop/pull/42)',
     );
@@ -137,9 +137,70 @@ describe("live PR state", () => {
     const { f, worker } = await withTask();
     await createPullRequest(f.deps, worker, pr);
     f.github.failViews = true;
-    const later = { ...f.deps, clock: { now: () => new Date("2026-11-08T10:05:00.000Z") } };
+    const later = { ...f.deps, clock: { ...f.deps.clock, now: () => new Date("2026-11-08T10:05:00.000Z") } };
     const prs = await refreshPrs(later, ["task-000001"]);
     expect(prs.get("task-000001")).toMatchObject({ state: "open", checkedAt: "2026-11-08T10:00:00.000Z" });
+  });
+
+  const fiveMinutesLater = (
+    f: ReturnType<typeof fakeDeps>,
+    wait: (ms: number) => Promise<void> = (ms) => f.deps.clock.wait(ms),
+  ) => ({
+    ...f.deps,
+    clock: { now: () => new Date("2026-11-08T10:05:00.000Z"), wait },
+  });
+  async function openPrs(count: number) {
+    const f = fakeDeps();
+    const tasks = Array.from({ length: count }, (_, i) => `task-${i + 1}`);
+    for (const [i, task] of tasks.entries()) {
+      const url = `https://github.com/acme/shop/pull/${i + 1}`;
+      const head = `brigade/${task}`;
+      await f.deps.events.append({
+        at: "2026-11-08T10:00:00.000Z",
+        kind: "pr_opened",
+        task,
+        repo: "acme/shop",
+        number: i + 1,
+        url,
+        head,
+        base: "main",
+      });
+    }
+    return { f, tasks };
+  }
+  const views = (f: ReturnType<typeof fakeDeps>) => f.github.calls.filter((c) => c.startsWith("view"));
+
+  it("stops waiting for GitHub after 15 seconds, starts no new check, and reports the last known states", async () => {
+    const { f, tasks } = await openPrs(8);
+    let answer = (): void => undefined;
+    f.github.viewsWaitFor = new Promise<void>((resolve) => (answer = resolve));
+    const waits: number[] = [];
+    const prs = await refreshPrs(
+      fiveMinutesLater(f, (ms) => (waits.push(ms), Promise.resolve())),
+      tasks,
+    );
+    expect(waits).toEqual([15_000]);
+    expect(prs.get("task-1")).toMatchObject({ state: "open", checkedAt: "2026-11-08T10:00:00.000Z" });
+    answer();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(views(f)).toEqual(["view acme/shop #1", "view acme/shop #2", "view acme/shop #3", "view acme/shop #4"]);
+  });
+
+  it("asks about the PRs it asked about least recently first, so failing ones don't crowd out the rest", async () => {
+    const { f, tasks } = await openPrs(9);
+    f.github.failViews = true;
+    await refreshPrs(fiveMinutesLater(f), tasks);
+    await refreshPrs(fiveMinutesLater(f), tasks);
+    expect(views(f).slice(8)).toEqual([
+      "view acme/shop #9",
+      "view acme/shop #1",
+      "view acme/shop #2",
+      "view acme/shop #3",
+      "view acme/shop #4",
+      "view acme/shop #5",
+      "view acme/shop #6",
+      "view acme/shop #7",
+    ]);
   });
 
   it("doesn't ask GitHub again within 30 seconds", async () => {

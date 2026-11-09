@@ -168,6 +168,8 @@ export interface Prompts {
 
 export interface Clock {
   now(): Date;
+  /** Resolves after `ms`. It never keeps the process alive by itself. */
+  wait(ms: number): Promise<void>;
 }
 
 export interface Ids {

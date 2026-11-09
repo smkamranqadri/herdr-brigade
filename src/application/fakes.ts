@@ -152,6 +152,8 @@ class FakeGitHub {
   readonly prs: (PullRequest & { repo: string })[] = [];
   readonly calls: string[] = [];
   failViews = false;
+  /** While set, views wait for it before they answer, as when GitHub is slow. */
+  viewsWaitFor: Promise<void> | null = null;
   private next = 41;
   pullRequestsFor(repo: string, head: string): Promise<PullRequest[]> {
     this.calls.push(`list ${repo} ${head}`);
@@ -179,9 +181,12 @@ class FakeGitHub {
   }
   view(repo: string, num: number): Promise<PullRequest> {
     this.calls.push(`view ${repo} #${num}`);
-    const pr = this.prs.find((p) => p.repo === repo && p.number === num);
-    if (this.failViews || !pr) return Promise.reject(new Error("gh pr view failed: network"));
-    return Promise.resolve(pr);
+    const answer = () => {
+      const pr = this.prs.find((p) => p.repo === repo && p.number === num);
+      if (this.failViews || !pr) return Promise.reject(new Error("gh pr view failed: network"));
+      return Promise.resolve(pr);
+    };
+    return this.viewsWaitFor ? this.viewsWaitFor.then(answer) : answer();
   }
 }
 
@@ -211,7 +216,8 @@ const FIXED = {
     render: (role: string, values: Readonly<Record<string, string>>) =>
       Promise.resolve(`${role} prompt for ${values.OWNER ?? "?"}${values.NOTES ? `\n${values.NOTES}` : ""}`),
   },
-  clock: { now: () => new Date("2026-11-08T10:00:00.000Z") },
+  // A wait never ends unless a test says so: a deadline only passes when the test makes it.
+  clock: { now: () => new Date("2026-11-08T10:00:00.000Z"), wait: () => new Promise<void>(() => undefined) },
   coordinatorFolder: "/state/coordinator",
   defaultRepoRoots: ["/home/sam/Repositories"],
 };

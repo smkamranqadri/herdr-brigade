@@ -10,6 +10,13 @@ const PR_FRESH_MS = 30_000;
 /** At most this many PR states are read in one list_tasks call, this many at a time. */
 const PR_REFRESH_MAX = 8;
 const PR_REFRESH_PARALLEL = 4;
+/** list_tasks waits at most this long for GitHub, then reports the last known states. */
+const PR_REFRESH_DEADLINE_MS = 15_000;
+/**
+ * When this process last asked GitHub about each PR, per event log. A PR whose checks keep failing keeps its old
+ * checked time, so without this it would be first in line every time and crowd out the rest.
+ */
+const lastAsked = new WeakMap<object, Map<string, number>>();
 
 /** One publish at a time per task in this process: two calls can't race to open two PRs. */
 const publishing = new Map<string, Promise<unknown>>();
@@ -109,18 +116,55 @@ async function refreshOne(deps: Deps, task: string, pr: TaskPr): Promise<void> {
   }
 }
 
-/** Reads the live state of up to PR_REFRESH_MAX stale PRs, a few at a time, then returns every task's PR. */
-export async function refreshPrs(deps: Deps, tasks: readonly string[]): Promise<Map<string, TaskPr>> {
-  const now = deps.clock.now();
-  const before = derivePrs(await deps.events.read());
+/** Runs `work` on each item, `limit` at a time, starting no new item once `stop` says so. */
+async function eachLimited<T>(
+  items: readonly T[],
+  limit: number,
+  work: (item: T) => Promise<void>,
+  stop: () => boolean,
+): Promise<void> {
+  let next = 0;
+  const runner = async () => {
+    for (let item = items[next]; item !== undefined && !stop(); item = items[next]) {
+      next++;
+      await work(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runner));
+}
+
+/** The stale PRs to ask about now: the ones asked about least recently first, at most PR_REFRESH_MAX. */
+function refreshQueue(deps: Deps, prs: Map<string, TaskPr>, tasks: readonly string[], now: Date) {
+  const asked = lastAsked.get(deps.events) ?? new Map<string, number>();
+  lastAsked.set(deps.events, asked);
+  const key = (pr: TaskPr) => `${pr.repo}#${pr.number}`;
+  const since = (pr: TaskPr) => Math.max(pr.checkedAt ? Date.parse(pr.checkedAt) : 0, asked.get(key(pr)) ?? 0);
   const stale = tasks.flatMap((t) => {
-    const pr = before.get(t);
+    const pr = prs.get(t);
     return pr && prStale(pr, now, PR_FRESH_MS) ? [[t, pr] as const] : [];
   });
-  const todo = stale.slice(0, PR_REFRESH_MAX);
-  for (let i = 0; i < todo.length; i += PR_REFRESH_PARALLEL) {
-    await Promise.all(todo.slice(i, i + PR_REFRESH_PARALLEL).map(([t, pr]) => refreshOne(deps, t, pr)));
-  }
+  const todo = stale.sort(([, a], [, b]) => since(a) - since(b)).slice(0, PR_REFRESH_MAX);
+  for (const [, pr] of todo) asked.set(key(pr), now.getTime());
+  return todo;
+}
+
+/**
+ * Reads the live state of up to PR_REFRESH_MAX stale PRs, a few at a time, for at most PR_REFRESH_DEADLINE_MS, then
+ * returns every task's PR. A check still running at the deadline records its state when it ends.
+ */
+export async function refreshPrs(deps: Deps, tasks: readonly string[]): Promise<Map<string, TaskPr>> {
+  const todo = refreshQueue(deps, derivePrs(await deps.events.read()), tasks, deps.clock.now());
+  let late = false;
+  const deadline = deps.clock.wait(PR_REFRESH_DEADLINE_MS).then(() => {
+    late = true;
+  });
+  const checks = eachLimited(
+    todo,
+    PR_REFRESH_PARALLEL,
+    ([t, pr]) => refreshOne(deps, t, pr),
+    () => late,
+  );
+  await Promise.race([checks, deadline]);
   return derivePrs(await deps.events.read());
 }
 
