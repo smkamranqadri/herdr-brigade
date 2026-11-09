@@ -95,16 +95,23 @@ export default class Brigade extends View {
           .items_center()
           .child(this.dot(task.waiting ? "blocked" : task.status, t))
           .child(div().flex_1().truncate().text_color(color).child(task.title))
-          .child(div().text_color(t.dim).child(`${task.spec.harness} · ${state}`))
-          .when(task.pr !== null, (el) => el.child(this.prChip(task.pr, t))),
+          .child(div().text_color(t.dim).child(`${task.spec.harness} · ${state}`)),
       )
       .child(
-        div()
+        // The PR chip sits on this second line: on the first it left the title no room in the 368 px panel.
+        h_flex()
+          .gap(8)
           .pl(16)
-          .text_size(11.5)
-          .text_color(t.muted)
-          .truncate()
-          .child(task.note ?? task.branch),
+          .items_center()
+          .child(
+            div()
+              .flex_1()
+              .text_size(11.5)
+              .text_color(t.muted)
+              .truncate()
+              .child(task.note ?? task.branch),
+          )
+          .when(task.pr !== null, (el) => el.child(this.prChip(task.pr, t))),
       );
   }
 
@@ -151,7 +158,7 @@ export default class Brigade extends View {
             .gap(2)
             .child(
               label(
-                `PROJECT · ${p.name} · ${p.notes.notes} notes${p.notes.openSuggestions ? ` · ${p.notes.openSuggestions} to settle` : ""}`,
+                `PROJECT · ${p.name} · ${p.notes.notes} ${p.notes.notes === 1 ? "note" : "notes"}${p.notes.openSuggestions ? ` · ${p.notes.openSuggestions} to settle` : ""}`,
               ),
             )
             .when(p.captain !== null, (el) => el.child(this.agentLine(`captain-${p.name}`, "Captain", p.captain, t)))
