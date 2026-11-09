@@ -179,6 +179,20 @@ describe("toolsFor", () => {
     expect(f.configStore.writes).toBe(0);
   });
 
+  it("lets neither project tool set the owner, the roles or the repo roots", async () => {
+    const f = fakeDeps();
+    const tools = toolsFor(f.deps, ctx({ role: "coordinator" }));
+    for (const field of ["owner", "roles", "repoRoots"]) {
+      await expect(tools.update_project?.run({ name: "shop", baseBranch: "main", [field]: "x" })).rejects.toThrow(
+        `update_project takes only name, baseBranch; it can't set ${field}.`,
+      );
+      await expect(tools.add_project?.run({ name: "blog", repo: "/repos/blog", [field]: "x" })).rejects.toThrow(
+        `add_project takes only name, repo, baseBranch; it can't set ${field}.`,
+      );
+    }
+    expect(f.configStore.writes).toBe(0);
+  });
+
   it("runs each call on a fresh config snapshot", async () => {
     const f = fakeDeps();
     const added = {

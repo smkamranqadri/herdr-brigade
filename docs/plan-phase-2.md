@@ -96,7 +96,14 @@ Each step is a thin slice through every layer with its tests (guide W4), the gat
 | Budget: newest notes first, the rest counted and readable | Over-budget project | Yes | — |
 | No publishing without a pinned `github` repo | Tool refuses | Yes | — |
 | Agents can't change a project's `github` repo | `update_project` rejects it | Yes | — |
-| Push only to the project's GitHub repo | `origin` pointing elsewhere | Yes | — |
+| Push only to the project's GitHub repo | `origin` pointing elsewhere; a url rewrite rule | Yes | — |
+| Push only the task branch | No tags or submodules in the push arguments | Yes | — |
+| No git hooks outside the sandbox | A pre-commit hook in the repo | Yes | — |
+| No credentials in a refusal | Origin with a password | Yes | — |
+| A lost or late lock never loses a write | Late reaper, slow writer, empty lock | Yes | — |
+| A merge never overwrites a newer note | Change and merge at once | Yes | — |
+| PR refresh ends in 15 seconds and is fair | Hanging GitHub; nine failing PRs | Yes | — |
+| The extra Enter never sends other text | Owner's edit; text only in the output | Yes | pi, by hand |
 | Never push to a merged or closed PR's branch | Reconcile finds it merged | Yes | — |
 | Retry after a crash opens no second PR | Push done, create interrupted | Yes | — |
 | Tasks keep their base branch | `update_project` during a task | Yes | — |

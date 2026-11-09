@@ -50,3 +50,26 @@ Reviewer: Codex CLI, `gpt-6.1-sol` at medium effort, read-only, on `docs/plan-ph
 | R12 | No mutation plan for new guards; the notes example was a code convention | A proof matrix; the notes example is now a preference |
 | R13 | Approving the repo doesn't prepare the test fixture or git credentials | Seeded repo, pinned identity, `git push --dry-run` before runs |
 | R14 | A project with notes but no agents would not show in the panel | The panel reads projects from the config |
+
+## Phase 2 steps 1 to 4 (2026-11-09)
+
+Reviewer: Codex CLI, `gpt-6.1-sol` at medium effort, read-only, on `d9d4ee8..cf95e84`, without the implementer's summary. 9 findings: 7 blocking, 2 suggestions. Each was checked against the code (R1 also with a scratch repo) before it was fixed, and each fix was mutation-checked.
+
+| ID | Finding | Fix |
+| --- | --- | --- |
+| R1 | git rewrites a checked URL again when it pushes, so an `insteadOf` rule could send the push elsewhere | A rewrite rule that matches the push URL is refused (`81fe599`) |
+| R2 | `push.followTags` could push tags with the task branch | The push names `--no-follow-tags` and `--recurse-submodules=no` (`81fe599`) |
+| R3 | A refused origin URL showed any password in it | Refusals show the URL without credentials (`81fe599`) |
+| R4 | A late reaper could delete a successor's config lock | Locks are moved aside and put back if they changed; a writer that lost its lock drops its change (`e9baf55`) |
+| R5 | A crash between creating the lock and writing it blocked writes for good | The lock is created with its content in one step; an unreadable lock is aged by its file time (`e9baf55`) |
+| R6 | The extra Enter could send the owner's own edit | Enter only when the box between the last two rules holds exactly brigade's message (`7efd70c`) |
+| R7 | A merge could overwrite a note changed meanwhile | The merge records the text it was based on; otherwise the suggestion stays open, in both folds (`5ef0d54`) |
+| R8 | PR refresh could take 40 seconds and starve a ninth PR | A 15-second deadline, and least recently asked first (`389f306`) |
+| R9 | The config fake accepted a config the file store refuses | Both use one check, `checkedChange` (`e9baf55`) |
+
+Found while fixing R1 to R3: commit and push run outside the agent's sandbox, so git hooks ran there too. A hook manager such as lefthook reads its commands from the worktree, which the agent writes. Brigade's git calls now run with `core.hooksPath=/dev/null`, and the worker prompt says to run the repo's checks itself (`81fe599`).
+
+The reviewer also noted that the proof matrix claimed a test for each protected config field, but the test covered only `github`. A test for `owner`, `roles` and `repoRoots` on both project tools is added. The lock test uses two store instances in one process: each has its own queue, so they contend only through the lock file, as two processes do.
+
+The reviewer could not run vitest in its read-only sandbox (`EROFS` on `node_modules/.vite-temp`). The implementer ran the gate after the fixes: 227 tests pass.
+
