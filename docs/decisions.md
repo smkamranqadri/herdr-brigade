@@ -53,9 +53,20 @@ Codex's `workspace-write` sandbox keeps git metadata read-only, even with `--add
 
 Claude Code and Codex ask once per folder whether to trust it. Brigade answers yes for the folders it starts agents in, one checked key at a time. Each harness then saves the folder as trusted in its own global file (`~/.claude.json`, `~/.codex/config.toml`). Each new worktree adds an entry. `-c projects."<folder>".trust_level` did not skip Codex's prompt.
 
-## Brigade's git calls run no hooks (2026-11-09, owner's choice)
+## Git hooks: on for Claude and pi, off for sandboxed Codex workers (2026-11-09, owner's choice)
 
-The commit and push tools run outside the agent's sandbox. A git hook, or a hook manager such as lefthook, runs commands from files in the worktree, which the agent writes. So brigade runs git with `core.hooksPath=/dev/null`, and the repo's pre-commit checks don't run on brigade commits. The worker prompt tells workers to run the repo's checks themselves. Options rejected: hooks on for all (a sandboxed Codex worker could escape through a hook), and hooks on except for Codex.
+**The problem with Codex.** A Codex worker runs in Codex's `workspace-write` sandbox. That sandbox keeps `.git` read-only, so the worker can't commit, and brigade commits and pushes for it, outside the sandbox. git runs the repo's hooks during those calls. A hook manager such as lefthook reads its commands from files in the worktree (`lefthook.yml`, `package.json` scripts), and the worker can edit those. So a sandboxed worker could write any command into such a file, and brigade's commit would run it outside the sandbox. Seen in code review on 2026-11-09, and shown with a test hook; not seen from a real agent.
+
+**The rule.** brigade's commit and push run the repo's hooks unless the worker is sandboxed (`sandboxed(spec)` in `src/domain/agent.ts`): a Codex worker on any level but `bypass`. Then git runs with `core.hooksPath=/dev/null`. Claude Code and pi workers have no sandbox here, so a hook gives them nothing they couldn't do already, and the owner's checks run on their commits.
+
+**What it costs.** A sandboxed Codex worker's commits skip the repo's pre-commit checks. The worker prompt says to run the checks before committing. The owner's own commits and any CI still run them.
+
+**Revisit when:**
+- Claude Code's optional sandbox is turned on for brigade's agents. Then Claude workers are sandboxed too, and `sandboxed()` must say so.
+- Codex gets a way to run hooks inside its sandbox, or brigade runs the hooks in a sandbox of its own.
+- Note: Codex workers are still launched with `--add-dir <repo>/.git`, which has no effect (Codex keeps git metadata read-only). It is harmless and left as it is.
+
+Rejected: hooks off for everyone (the owner's checks never run on brigade commits), and hooks on for everyone (a sandboxed Codex worker could escape through a hook).
 
 ## Gaps against the guide, on purpose (guide P8)
 

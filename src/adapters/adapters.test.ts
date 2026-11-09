@@ -86,7 +86,7 @@ describe("GitWorktrees", () => {
     const folder = await worktrees.create(repo, "main", "brigade/login-1");
     await writeFile(path.join(folder, "login.txt"), "hello\n");
     await writeFile(path.join(folder, "README.md"), "# shop, changed\n");
-    const target = { worktree: folder, repo, branch: "brigade/login-1" };
+    const target = { worktree: folder, repo, branch: "brigade/login-1", runHooks: false };
     const commit = await worktrees.commit(target, "Add login");
     expect(commit?.files).toBe(2);
     expect(commit?.sha).toBe(git(folder, "rev-parse", "--short=12", "HEAD"));
@@ -111,7 +111,9 @@ describe("GitWorktrees", () => {
     const folders = await Promise.all([1, 2, 3, 4].map((i) => worktrees.create(repo, "main", `brigade/task-${i}`)));
     await Promise.all(folders.map((f, i) => writeFile(path.join(f, `file-${i}.txt`), `${i}\n`)));
     const commits = await Promise.all(
-      folders.map((f, i) => worktrees.commit({ worktree: f, repo, branch: `brigade/task-${i + 1}` }, `Add file ${i}`)),
+      folders.map((f, i) =>
+        worktrees.commit({ worktree: f, repo, branch: `brigade/task-${i + 1}`, runHooks: false }, `Add file ${i}`),
+      ),
     );
     expect(commits.map((c) => c?.files)).toEqual([1, 1, 1, 1]);
     expect(folders.map((f) => git(f, "log", "-1", "--format=%s"))).toEqual([
@@ -144,7 +146,15 @@ describe("GitWorktrees", () => {
       const mine = await worktrees.create(repo, "main", "brigade/mine-1");
       const sibling = await worktrees.create(repo, "main", "brigade/sibling-2");
       await writeFile(path.join(mine, "work.txt"), "work\n");
-      return { git, repo, other, worktrees, mine, sibling, target: { worktree: mine, repo, branch: "brigade/mine-1" } };
+      return {
+        git,
+        repo,
+        other,
+        worktrees,
+        mine,
+        sibling,
+        target: { worktree: mine, repo, branch: "brigade/mine-1", runHooks: false },
+      };
     }
 
     it("when the worker switched to another branch", async () => {
@@ -233,7 +243,7 @@ describe("GitWorktrees", () => {
       expect(withoutCredentials("git@github.com:a/b.git")).toBe("git@github.com:a/b.git");
     });
 
-    it("runs no hooks when it commits for an agent", async () => {
+    it("runs the repo's hooks for an unsandboxed worker, and none for a sandboxed one", async () => {
       const s = await setup();
       const marker = path.join(s.repo, "hook-ran");
       const hook = path.join(s.repo, ".git", "hooks", "pre-commit");
@@ -241,6 +251,9 @@ describe("GitWorktrees", () => {
       await chmod(hook, 0o755);
       expect((await s.worktrees.commit(s.target, "Work"))?.files).toBe(1);
       await expect(access(marker)).rejects.toThrow("ENOENT");
+      await writeFile(path.join(s.mine, "more.txt"), "more\n");
+      expect((await s.worktrees.commit({ ...s.target, runHooks: true }, "More"))?.files).toBe(1);
+      await expect(access(marker)).resolves.toBeUndefined();
     });
 
     it("when the worktree's .git file points at another task's worktree", async () => {
@@ -252,8 +265,16 @@ describe("GitWorktrees", () => {
     });
   });
 
-  it("pushes only the task branch: no hooks, no tags, no submodules, no force", () => {
-    expect(pushArgs("/g", "/w", "git@github.com:acme/shop.git", "brigade/x-1")).toEqual([
+  it("pushes only the task branch: no tags, no submodules, no force, and no hooks for a sandboxed worker", () => {
+    const target = { worktree: "/w", repo: "/r", branch: "brigade/x-1", runHooks: false };
+    expect(pushArgs("/g", { ...target, runHooks: true }, "git@github.com:acme/shop.git").slice(0, 5)).toEqual([
+      "--git-dir",
+      "/g",
+      "--work-tree",
+      "/w",
+      "push",
+    ]);
+    expect(pushArgs("/g", target, "git@github.com:acme/shop.git")).toEqual([
       "-c",
       "core.hooksPath=/dev/null",
       "--git-dir",

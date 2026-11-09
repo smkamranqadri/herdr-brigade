@@ -6,15 +6,15 @@ import { githubRepoOf } from "../../domain/github.ts";
 import { git } from "./git.ts";
 
 /**
- * Every git call brigade makes for an agent runs outside the agent's sandbox, so it runs no hooks: a hook (or a hook
+ * brigade's git calls run outside the agent's sandbox. For a sandboxed agent they run no hooks: a hook (or a hook
  * manager such as lefthook) can run commands the agent wrote into its worktree.
  */
-const NO_HOOKS = ["-c", "core.hooksPath=/dev/null"];
+const hooks = (runHooks: boolean) => (runHooks ? [] : ["-c", "core.hooksPath=/dev/null"]);
 
 /** The arguments of the task branch's push: that one branch, no tags, no submodules, no force. */
-export function pushArgs(gitDir: string, worktree: string, url: string, branch: string): string[] {
-  const ref = `refs/heads/${branch}`;
-  const pinned = [...NO_HOOKS, "--git-dir", gitDir, "--work-tree", worktree];
+export function pushArgs(gitDir: string, target: CommitTarget, url: string): string[] {
+  const ref = `refs/heads/${target.branch}`;
+  const pinned = [...hooks(target.runHooks), "--git-dir", gitDir, "--work-tree", target.worktree];
   return [...pinned, "push", "--no-follow-tags", "--recurse-submodules=no", url, `${ref}:${ref}`];
 }
 
@@ -39,7 +39,7 @@ export class GitWorktrees implements Worktrees {
    */
   async commit(target: CommitTarget, message: string): Promise<Commit | null> {
     const gitDir = await verifiedGitDir(target);
-    const pinned = [...NO_HOOKS, "--git-dir", gitDir, "--work-tree", target.worktree];
+    const pinned = [...hooks(target.runHooks), "--git-dir", gitDir, "--work-tree", target.worktree];
     await git([...pinned, "add", "-A"], "add");
     const staged = (await git([...pinned, "diff", "--cached", "--name-only"], "diff")).split("\n").filter(Boolean);
     if (staged.length === 0) return null;
@@ -55,7 +55,7 @@ export class GitWorktrees implements Worktrees {
   async push(target: CommitTarget, github: string): Promise<void> {
     const gitDir = await verifiedGitDir(target);
     const url = await checkedPushUrl(gitDir, github);
-    await git(pushArgs(gitDir, target.worktree, url, target.branch), "push");
+    await git(pushArgs(gitDir, target, url), "push");
   }
 }
 

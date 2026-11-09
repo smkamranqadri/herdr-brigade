@@ -1,4 +1,4 @@
-import type { AgentContext } from "../domain/agent.ts";
+import { sandboxed, type AgentContext } from "../domain/agent.ts";
 import { BrigadeError } from "../domain/errors.ts";
 import { derivePrs, prLine, prStale, type TaskPr } from "../domain/pullRequests.ts";
 import { deriveTasks, type TaskView } from "../domain/tasks.ts";
@@ -66,7 +66,8 @@ async function pushAndOpen(
   input: { title: string; body: string },
 ): Promise<string> {
   const { task, github, base } = t;
-  await deps.worktrees.push({ worktree: task.worktree, repo: t.repo, branch: task.branch }, github);
+  const target = { worktree: task.worktree, repo: t.repo, branch: task.branch, runHooks: !sandboxed(task.spec) };
+  await deps.worktrees.push(target, github);
   const open = existing.find((pr) => pr.base === base);
   if (open) await deps.github.edit(github, open.number, input);
   const pr = open

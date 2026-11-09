@@ -1,4 +1,4 @@
-import type { AgentContext } from "../domain/agent.ts";
+import { sandboxed, type AgentContext } from "../domain/agent.ts";
 import { BrigadeError } from "../domain/errors.ts";
 import { deriveTasks } from "../domain/tasks.ts";
 import { record } from "./launch.ts";
@@ -63,7 +63,8 @@ export async function commitWork(deps: Deps, ctx: AgentContext, input: { message
   const repo = deps.config.projects.find((p) => p.name === task.project)?.repo;
   if (!repo)
     throw new BrigadeError(`Project ${task.project} is no longer in the config, so brigade won't commit for it.`);
-  const commit = await deps.worktrees.commit({ worktree: task.worktree, repo, branch: task.branch }, input.message);
+  const target = { worktree: task.worktree, repo, branch: task.branch, runHooks: !sandboxed(task.spec) };
+  const commit = await deps.worktrees.commit(target, input.message);
   if (!commit) return "Nothing to commit: your worktree has no changes.";
   await record(deps, { kind: "task_committed", task: w.task, sha: commit.sha, message: input.message });
   return `Committed ${commit.files} file${commit.files === 1 ? "" : "s"} as ${commit.sha} on ${task.branch}.`;

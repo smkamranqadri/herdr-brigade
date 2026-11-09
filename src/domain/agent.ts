@@ -41,6 +41,13 @@ function isOneOf<T extends string>(list: readonly T[], value: unknown): value is
   return typeof value === "string" && list.some((item) => item === value);
 }
 
+/**
+ * Whether a worker runs in a sandbox that brigade's git calls must not let it escape. Codex workers do (its
+ * workspace-write sandbox), except on "bypass". Claude Code and pi run with no sandbox here: brigade doesn't turn
+ * Claude Code's optional sandbox on. If that changes, this changes too (docs/decisions.md).
+ */
+export const sandboxed = (spec: AgentSpec): boolean => spec.harness === "codex" && spec.permissions !== "bypass";
+
 export const isHarness = (value: unknown): value is Harness => isOneOf(HARNESSES, value);
 export const isRole = (value: unknown): value is Role => isOneOf(ROLES, value);
 export const isEffort = (value: unknown): value is Effort => isOneOf(EFFORTS, value);

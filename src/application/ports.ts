@@ -96,6 +96,11 @@ export interface CommitTarget {
   readonly worktree: string;
   readonly repo: string;
   readonly branch: string;
+  /**
+   * Whether git runs the repo's hooks. False for a sandboxed worker: brigade's git runs outside its sandbox, and a
+   * hook manager runs commands from files the worker can edit.
+   */
+  readonly runHooks: boolean;
 }
 
 export interface Worktrees {

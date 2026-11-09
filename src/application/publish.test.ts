@@ -27,7 +27,10 @@ describe("createPullRequest", () => {
     expect(await createPullRequest(f.deps, worker, pr)).toBe("Opened PR #42: https://github.com/acme/shop/pull/42");
     expect(f.github.calls).toEqual([`list acme/shop ${branch}`, `create acme/shop ${branch}->main "Fix login"`]);
     expect(f.worktrees.pushes).toEqual([
-      { target: { worktree: `/worktrees/${branch}`, repo: "/repos/shop", branch }, github: "acme/shop" },
+      {
+        target: { worktree: `/worktrees/${branch}`, repo: "/repos/shop", branch, runHooks: false },
+        github: "acme/shop",
+      },
     ]);
     expect(f.events.events.filter((e) => e.kind === "pr_opened" || e.kind === "pr_state").map((e) => e.kind)).toEqual([
       "pr_opened",

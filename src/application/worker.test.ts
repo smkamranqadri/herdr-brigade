@@ -58,6 +58,22 @@ describe("commitWork", () => {
     spec: { harness: "codex", model: "gpt-x", effort: "low", permissions: "auto" },
   } as const;
 
+  it("runs the repo's git hooks for every worker except a sandboxed Codex one", async () => {
+    const specs = [
+      [{ harness: "codex", permissions: "auto" }, false],
+      [{ harness: "codex", permissions: "ask" }, false],
+      [{ harness: "codex", permissions: "bypass" }, true],
+      [{ harness: "claude", permissions: "auto" }, true],
+      [{ harness: "pi", permissions: "auto" }, true],
+    ] as const;
+    for (const [spec, runHooks] of specs) {
+      const f = fakeDeps();
+      f.events.events.push({ ...created, spec: { ...created.spec, ...spec } });
+      await commitWork(f.deps, worker, { message: "x" });
+      expect([spec, f.worktrees.commits[0]?.target.runHooks]).toEqual([spec, runHooks]);
+    }
+  });
+
   it("commits in the task's own worktree from the event log, and records the commit", async () => {
     const f = fakeDeps();
     f.events.events.push(created);
@@ -66,7 +82,12 @@ describe("commitWork", () => {
     );
     expect(f.worktrees.commits).toEqual([
       {
-        target: { worktree: "/worktrees/brigade/login-1", repo: "/repos/shop", branch: "brigade/login-1" },
+        target: {
+          worktree: "/worktrees/brigade/login-1",
+          repo: "/repos/shop",
+          branch: "brigade/login-1",
+          runHooks: false,
+        },
         message: "Add login",
       },
     ]);
