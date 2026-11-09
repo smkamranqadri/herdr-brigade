@@ -74,11 +74,11 @@ export class HerdrApp {
   }
 }
 
-/** Copies the mod into herdr-app's mods folder and writes its config. Returns the folder. */
+/** Copies the mod into herdr-app's mods folder and writes its config (where to read, and how to start). Returns the folder. */
 export async function installMod(
   source: string,
   herdrAppHome: string,
-  where: { stateDir: string; configFile: string },
+  where: { stateDir: string; configFile: string; start: readonly string[] },
 ): Promise<string> {
   const target = path.join(herdrAppHome, "mods", MOD_NAME);
   await mkdir(target, { recursive: true });
@@ -87,6 +87,8 @@ export async function installMod(
     `// Written by "brigade mod install"; run it again to change.`,
     `export const STATE_DIR = ${JSON.stringify(where.stateDir)};`,
     `export const CONFIG_FILE = ${JSON.stringify(where.configFile)};`,
+    "// The panel's Start button runs this: `brigade start` for this same config and state.",
+    `export const START = ${JSON.stringify(where.start)};`,
     "",
   ].join("\n");
   await writeFile(path.join(target, "config.js"), config);

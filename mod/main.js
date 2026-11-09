@@ -2,13 +2,15 @@
 // events. A click on a row shows that agent's terminal over your tab (peek), where you chat with it. It only shows; it changes nothing.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { terminals, theme, run, readTextFile, watchFolder } from "herdr";
-import { CONFIG_FILE, STATE_DIR } from "./config.js";
+import { exec, terminals, theme, run, readTextFile, watchFolder } from "herdr";
+import { CONFIG_FILE, START, STATE_DIR } from "./config.js";
 import { buildModel, configProjects, parseEvents } from "./model.js";
 
 const EVENTS_FILE = `${STATE_DIR}/events.jsonl`;
 /** Used only while the state folder doesn't exist yet, so it can't be watched. */
 const RETRY_MS = 5000;
+/** brigade start waits up to 30 s for a trust prompt, then up to 10 s for herdr-app to see the terminal. */
+const START_TIMEOUT_MS = 90_000;
 
 const localTime = (iso) => new Date(iso).toTimeString().slice(0, 5);
 
@@ -16,6 +18,9 @@ export default class Brigade extends View {
   init(_props, cx) {
     this.events = [];
     this.projects = [];
+    /** While the Start button's `brigade start` runs; then its error, if it failed. */
+    this.starting = false;
+    this.startError = null;
     this.watch(cx);
   }
 
@@ -115,6 +120,50 @@ export default class Brigade extends View {
       );
   }
 
+  /** Runs `brigade start`, which starts the Coordinator and shows it over the tab. Ignores clicks while it runs. */
+  start(cx) {
+    if (this.starting) return;
+    this.starting = true;
+    this.startError = null;
+    cx.notify();
+    cx.spawn(async (cx) => {
+      try {
+        const r = await exec(START[0], START.slice(1), { timeout: START_TIMEOUT_MS });
+        if (r.code !== 0) this.startError = (r.stderr || r.stdout).trim().split("\n").pop() || `exit ${r.code}`;
+      } catch (err) {
+        this.startError = String(err);
+      }
+      this.starting = false;
+      cx.notify();
+    });
+  }
+
+  startButton(t) {
+    return v_flex()
+      .gap(6)
+      .child(div().text_color(t.muted).child("No Coordinator is running. Start it, then chat with it here."))
+      .child(
+        h_flex()
+          .id("start")
+          .h(26)
+          .px(10)
+          .flex_none()
+          .self_start()
+          .items_center()
+          .rounded(7)
+          .text_size(12)
+          .bg(t.solid)
+          .text_color(t.solid_foreground)
+          .cursor_pointer()
+          .hover((s) => s.opacity(0.85))
+          .on_click((_e, cx) => this.start(cx))
+          .child(this.starting ? "Starting…" : "Start brigade"),
+      )
+      .when(this.startError !== null, (el) =>
+        el.child(div().text_size(11.5).text_color(t.blocked).child(`Couldn't start: ${this.startError}`)),
+      );
+  }
+
   render() {
     const t = theme();
     const m = buildModel(terminals(), this.events, this.projects);
@@ -146,11 +195,7 @@ export default class Brigade extends View {
               .child(div().text_color(t.dim).child(`${m.counts.finished} finished`)),
           ),
       )
-      .when(m.coordinator === null, (el) =>
-        el.child(
-          div().text_color(t.muted).child("No Coordinator is running. Run brigade start, then chat with it here."),
-        ),
-      )
+      .when(m.coordinator === null, (el) => el.child(this.startButton(t)))
       .when(m.coordinator !== null, (el) => el.child(this.agentLine("coordinator", "Coordinator", m.coordinator, t)))
       .children(
         m.projects.map((p) =>

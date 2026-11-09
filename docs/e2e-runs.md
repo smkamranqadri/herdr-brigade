@@ -174,3 +174,7 @@ The owner watched while `brigade start` started a Claude Coordinator in a test f
 
 `herdr-app do terminal.peek` shows such a terminal over the current tab, with ↗ keep (make it a tab) and ✕. `brigade start` and clicks on panel rows now use it (owner's choice: peek only, no sidebar row). A second `brigade start` showed the Coordinator in the peek overlay, confirmed by a screenshot. A click on a panel row uses the same command but was not clicked by hand.
 
+## 2026-11-09: the panel's Start button
+
+The panel, pointed at a test config with no Coordinator, showed "No Coordinator is running" and a **Start brigade** button (screenshot). The owner clicked it: the button said "Starting…", then the Coordinator opened in the peek overlay, and the panel listed it. The run's event log recorded a new `agent_started` for that Coordinator (`t17q`). The Coordinator was then closed, its trust entry removed (with a backup), and the panel pointed back at the real brigade.
+
