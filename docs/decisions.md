@@ -53,6 +53,10 @@ Codex's `workspace-write` sandbox keeps git metadata read-only, even with `--add
 
 Claude Code and Codex ask once per folder whether to trust it. Brigade answers yes for the folders it starts agents in, one checked key at a time. Each harness then saves the folder as trusted in its own global file (`~/.claude.json`, `~/.codex/config.toml`). Each new worktree adds an entry. `-c projects."<folder>".trust_level` did not skip Codex's prompt.
 
+## Brigade's git calls run no hooks (2026-11-09, owner's choice)
+
+The commit and push tools run outside the agent's sandbox. A git hook, or a hook manager such as lefthook, runs commands from files in the worktree, which the agent writes. So brigade runs git with `core.hooksPath=/dev/null`, and the repo's pre-commit checks don't run on brigade commits. The worker prompt tells workers to run the repo's checks themselves. Options rejected: hooks on for all (a sandboxed Codex worker could escape through a hook), and hooks on except for Codex.
+
 ## Gaps against the guide, on purpose (guide P8)
 
 - **CI (S7, Q3):** none yet; there is no remote. Add it when the repo gets one.
