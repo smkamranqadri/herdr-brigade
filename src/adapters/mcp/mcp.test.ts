@@ -22,7 +22,7 @@ describe("handleMessage", () => {
       result: {
         protocolVersion: "2025-06-18",
         capabilities: { tools: {} },
-        serverInfo: { name: "brigade", version: "1.0.0" },
+        serverInfo: { name: "brigade", version: "1.1.0" },
       },
     });
   });

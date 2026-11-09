@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 (2026-11-09)
 
 - **`repo_status`** for the Coordinator and Captains: a project's branch, ahead/behind, uncommitted changes, recent
   commits, branches, worktrees and open pull requests, read by brigade itself without changing anything. The routing

@@ -54,7 +54,7 @@ async function callTool(
 const initializeResult = (req: Request) => ({
   protocolVersion: req.params?.protocolVersion ?? PROTOCOL_FALLBACK,
   capabilities: { tools: {} },
-  serverInfo: { name: "brigade", version: "1.0.0" },
+  serverInfo: { name: "brigade", version: "1.1.0" },
 });
 
 /** Answers one JSON-RPC message. Notifications (no id) get no reply. */
