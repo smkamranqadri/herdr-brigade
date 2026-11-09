@@ -5,24 +5,24 @@ import { describe, expect, it } from "vitest";
 import { HerdrApp, installMod } from "./herdrApp.ts";
 
 describe("HerdrApp", () => {
-  it("focuses an agent, toggles the panel and checks a mod with herdr-app's own commands", async () => {
+  it("shows an agent over the tab (peek), toggles the panel and checks a mod with herdr-app's own commands", async () => {
     const calls: string[][] = [];
     const app = new HerdrApp((args) => {
       calls.push([...args]);
       return Promise.resolve(args[0] === "check" ? "check passed: /m\n" : '{"ok":true}');
     });
-    await app.focus("t7");
+    await app.show("t7");
     await app.openPanel();
     expect(await app.check("/m")).toBe("check passed: /m");
     expect(calls).toEqual([
-      ["do", "agent.focus", "--terminal", "t7"],
+      ["do", "terminal.peek", "--terminal", "t7"],
       ["do", "mod.open", "--name", "brigade"],
       ["check", "/m"],
     ]);
   });
 });
 
-describe("HerdrApp.focus", () => {
+describe("HerdrApp.show", () => {
   const scripted = (replies: string[]) => {
     const calls: string[][] = [];
     let clock = 0;
@@ -34,20 +34,20 @@ describe("HerdrApp.focus", () => {
     const app = new HerdrApp(run, { sleep: (ms) => ((clock += ms), Promise.resolve()), now: () => clock });
     return { app, calls };
   };
-  const notYet = 'ERR herdr-app do agent.focus failed: { "error": "no running terminal \\"t7\\"" }';
+  const notYet = 'ERR herdr-app do terminal.peek failed: { "error": "no running terminal \\"t7\\"" }';
 
   it("retries while herdr-app hasn't seen the new terminal yet", async () => {
     const { app, calls } = scripted([notYet, notYet, '{"ok":true}']);
-    await app.focus("t7");
+    await app.show("t7");
     expect(calls).toHaveLength(3);
   });
 
   it("fails at once on any other error, and after 10 seconds of not seeing the terminal", async () => {
-    await expect(scripted(["ERR herdr-app do agent.focus failed: no window"]).app.focus("t7")).rejects.toThrow(
+    await expect(scripted(["ERR herdr-app do terminal.peek failed: no window"]).app.show("t7")).rejects.toThrow(
       "no window",
     );
     const slow = scripted([notYet]);
-    await expect(slow.app.focus("t7")).rejects.toThrow("no running terminal");
+    await expect(slow.app.show("t7")).rejects.toThrow("no running terminal");
     expect(slow.calls).toHaveLength(21);
   });
 });

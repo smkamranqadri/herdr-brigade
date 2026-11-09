@@ -150,7 +150,7 @@ Cleanup: PRs #1–#3 are closed with a comment, and their branches are deleted. 
 - **pi's lost Enter, reproduced by hand.** A 16-line message pasted into pi 1.5.0 right after it started stayed in its input box: status idle, turn 0. One more Enter sent it, and pi ran turn 1. `HcTerminals.send` now does this itself: after a send to an idle agent, it waits up to 20 seconds for a turn, then presses Enter once if the end of the text is in the screen's last 12 lines. That screen is the test fixture (`src/adapters/hc/fixtures/pi-unsent-input.txt`).
 - **Each worktree check matters on its own.** Three new tests each trip exactly one check: a subfolder (top folder), a forged git folder in `.git/worktrees` (repo), and the repo's own git folder on the task's branch (git folder). Removing any check fails its own test.
 - **The e2e timeout path.** `WAIT_SECONDS=45 scripts/e2e.sh claude "Reply here with the single word hello. Do not create a task and do not contact any Captain."` The Coordinator replied "hello" and created no task. The script printed "timed out after 45s: the tasks did not all finish and get reported" and exited 1.
-- **Not checked yet:** auto-focus on `brigade start`, by eye, at a time the owner chooses.
+- **Auto-focus** was checked later the same day (see the last section).
 
 ## 2026-11-09: phase 2 step 5, final runs on each harness
 
@@ -167,4 +167,10 @@ One request per harness, against the GitHub test repo: "Three things. First, add
 - **The panel**, pointed at the Codex run's state, showed the demo project with 1 note, demo2 with 0 notes (from the config, with no agents), and the task's "PR #7 open" chip. The first screenshot showed the chip squeezing the task's title to an ellipsis, and "1 notes". The chip moved to the second line (`82b61b2`); a second screenshot confirmed the fix. The panel and the mod's config were restored afterwards, the config byte-identical.
 
 Cleanup: PRs #4 to #7 are closed with a comment and their branches deleted. The repo has no open PRs and only `main`.
+
+## 2026-11-09: auto-focus on `brigade start`, checked by eye
+
+The owner watched while `brigade start` started a Claude Coordinator in a test folder. `herdr-app do agent.focus` returned `ok`, but nothing changed on screen, and a screenshot showed the owner's own session. The Coordinator wasn't in the Agents sidebar either. brigade's agents run with no parent and no pane, so herdr-app has no tab to switch to and no list to put them in.
+
+`herdr-app do terminal.peek` shows such a terminal over the current tab, with ↗ keep (make it a tab) and ✕. `brigade start` and clicks on panel rows now use it (owner's choice: peek only, no sidebar row). A second `brigade start` showed the Coordinator in the peek overlay, confirmed by a screenshot. A click on a panel row uses the same command but was not clicked by hand.
 

@@ -63,10 +63,10 @@ async function start(paths: Paths): Promise<string> {
   const where = `${verb} the Coordinator in terminal ${address}.`;
   if (!paths.herdrApp) return `${where} Open it with: hc attach ${address}`;
   try {
-    await herdrApp(paths).focus(address);
+    await herdrApp(paths).show(address);
     return `${where} It is open in herdr-app: type to it there.`;
   } catch (err) {
-    return `${where} Couldn't open it in herdr-app (${err instanceof Error ? err.message : String(err)}). Click it in the Agents sidebar, or run: hc attach ${address}`;
+    return `${where} Couldn't open it in herdr-app (${err instanceof Error ? err.message : String(err)}). Click it in the Brigade panel, or run: hc attach ${address}`;
   }
 }
 

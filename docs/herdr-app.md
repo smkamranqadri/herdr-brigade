@@ -9,4 +9,4 @@ Open the panel in either of these ways:
   2. In `mods/auto-tabs/main.js`, add `"brigade"` to the `enabled` list after `"automations"`, and add `.child(panelButton("brigade", "Brigade", "mods/brigade/brigade.svg"))` after the Automations button.
 - **A window:** `brigade panel` (it runs `herdr-app do mod.open --name brigade`; run it again to close).
 
-The panel only shows. A click on a row focuses that agent's terminal, where you type to it. `brigade start` also focuses the Coordinator when herdr-app is on PATH.
+The panel only shows. A click on a row shows that agent's terminal over your tab (herdr-app's peek), where you type to it; ↗ keep makes it a tab. `brigade start` also shows the Coordinator this way when herdr-app is on PATH. brigade's agents run without a pane, so they are not in herdr-app's Agents sidebar, and `agent.focus` has nothing to switch to.

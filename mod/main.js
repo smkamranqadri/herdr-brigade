@@ -1,5 +1,5 @@
 // The Brigade panel for herdr-app: the Coordinator, each project's Captain and tasks with live status, and the latest
-// events. A click on a row focuses that agent's terminal, where you chat with it. It only shows; it changes nothing.
+// events. A click on a row shows that agent's terminal over your tab (peek), where you chat with it. It only shows; it changes nothing.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { terminals, theme, run, readTextFile, watchFolder } from "herdr";
@@ -53,7 +53,7 @@ export default class Brigade extends View {
       .rounded(6)
       .items_center()
       .hover((s) => s.bg(t.hover))
-      .on_click(() => run("agent.focus", { terminal: agent.address }))
+      .on_click(() => run("terminal.peek", { terminal: agent.address }))
       .child(this.dot(agent.status, t))
       .child(div().flex_1().truncate().child(label))
       .child(
@@ -88,7 +88,7 @@ export default class Brigade extends View {
       .ml(14)
       .rounded(6)
       .hover((s) => s.bg(t.hover))
-      .when(task.address !== null, (el) => el.on_click(() => run("agent.focus", { terminal: task.address })))
+      .when(task.address !== null, (el) => el.on_click(() => run("terminal.peek", { terminal: task.address })))
       .child(
         h_flex()
           .gap(8)

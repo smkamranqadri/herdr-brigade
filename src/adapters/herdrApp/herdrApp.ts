@@ -1,4 +1,4 @@
-// herdr-app, the Herdr window: focus an agent, open the Brigade panel, install and check the mod.
+// herdr-app, the Herdr window: show an agent, open the Brigade panel, install and check the mod.
 import { execFile } from "node:child_process";
 import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -44,12 +44,16 @@ export class HerdrApp {
     this.now = options.now ?? Date.now;
   }
 
-  /** Shows the agent's terminal in the window, so the owner can type to it. Waits while herdr-app catches up. */
-  async focus(address: string): Promise<void> {
+  /**
+   * Shows the agent's terminal over the owner's tab (herdr-app's peek, with "keep" to make it a tab), so the owner can
+   * type to it. agent.focus can't: brigade's agents run without a pane, so it has nothing to switch to. Waits while
+   * herdr-app catches up with a new terminal.
+   */
+  async show(address: string): Promise<void> {
     const until = this.now() + FOCUS_WAIT_MS;
     for (;;) {
       try {
-        await this.run(["do", "agent.focus", "--terminal", address]);
+        await this.run(["do", "terminal.peek", "--terminal", address]);
         return;
       } catch (err) {
         const notSeenYet = err instanceof Error && err.message.includes(NOT_SEEN_YET);
