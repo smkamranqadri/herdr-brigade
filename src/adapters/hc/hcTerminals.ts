@@ -19,9 +19,10 @@ const STILL_STARTING = '"kind":"unavailable"';
 /** After sending to an idle agent, how long to wait for its turn to start before checking for a lost Enter. */
 const TURN_START_WAIT_MS = 20_000;
 const TURN_POLL_MS = 1_000;
-/** The input box is at the bottom of the screen, so the end of unsent text is in its last lines. */
-const INPUT_LINES = 12;
-const TEXT_PROBE_CHARS = 40;
+/** A line drawn across the screen: pi and Claude Code draw one above and one below their input box. */
+const RULE = /^─{20,}$/;
+/** The prompt mark at the start of an input box (Claude Code's ❯), which is not part of the text. */
+const PROMPT_MARK = /^[❯›>]/;
 
 export function hcRunner(hcPath: string): HcRunner {
   return (args) =>
@@ -56,12 +57,19 @@ export function trustKey(screen: string, trust: TrustPrompt): "enter" | "down" {
   return selected?.includes(trust.yes) ? "enter" : "down";
 }
 
-/** Whether the end of the text is in the screen's last lines. Spaces and line breaks are ignored, since the box wraps. */
+/**
+ * Whether the input box holds exactly this text and nothing else. The box is what lies between the screen's last two
+ * rules. Spaces and line breaks are ignored, since the box wraps. With no box found, or any other text in it (such
+ * as the owner's own edit), the answer is no.
+ */
 export function stillInInput(screen: string, text: string): boolean {
+  const lines = screen.split("\n");
+  const rules = lines.flatMap((line, i) => (RULE.test(line.trim()) ? [i] : []));
+  const [top, bottom] = rules.slice(-2);
+  if (top === undefined || bottom === undefined) return false;
   const squeeze = (s: string) => s.replace(/\s+/g, "");
-  const bottom = squeeze(screen.trimEnd().split("\n").slice(-INPUT_LINES).join(""));
-  const end = squeeze(text).slice(-TEXT_PROBE_CHARS);
-  return end.length > 0 && bottom.includes(end);
+  const box = squeeze(lines.slice(top + 1, bottom).join("")).replace(PROMPT_MARK, "");
+  return box.length > 0 && box === squeeze(text);
 }
 
 export interface HcTerminalsOptions {

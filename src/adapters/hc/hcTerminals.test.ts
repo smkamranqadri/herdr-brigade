@@ -232,15 +232,25 @@ describe("HcTerminals.send", () => {
 
 describe("stillInInput", () => {
   const piScreen = readFileSync(new URL("fixtures/pi-unsent-input.txt", import.meta.url), "utf8");
+  const piText = piScreen.slice(piScreen.indexOf("[brigade]"), piScreen.indexOf("ok.") + 3);
+  const rule = "─".repeat(40);
 
-  it("finds the end of the text across wrapped lines, only near the bottom", () => {
+  it("is yes only when the box between the last two rules holds exactly the text", () => {
+    expect(stillInInput(piScreen, piText)).toBe(true);
+    expect(stillInInput(piScreen, piText.replace("line 7 of", "line seven of"))).toBe(false);
+    expect(stillInInput(piScreen, "Reply with the single word ok.")).toBe(false);
+  });
+
+  it("is no when the text is only in the output above and the owner's own draft is in the box", () => {
+    const screen = [rule, piText, rule, rule, "my own unfinished draft", rule, "~/demo-site"].join("\n");
+    expect(stillInInput(screen, piText)).toBe(false);
+  });
+
+  it("reads Claude Code's box without its prompt mark, and is no without a box", () => {
     expect(
-      stillInInput(
-        piScreen,
-        "line 14 of a long report about the readme change and its checks Reply with the single word ok.",
-      ),
+      stillInInput([rule, "❯ [brigade] hi there", rule, "  ? for shortcuts"].join("\n"), "[brigade] hi there"),
     ).toBe(true);
-    expect(stillInInput(piScreen, "[brigade] Task t9 finished: probe only.")).toBe(false);
-    expect(stillInInput(piScreen, "  ")).toBe(false);
+    expect(stillInInput("› [brigade] hi there", "[brigade] hi there")).toBe(false);
+    expect(stillInInput([rule, "", rule].join("\n"), "  ")).toBe(false);
   });
 });
