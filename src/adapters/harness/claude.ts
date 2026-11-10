@@ -25,6 +25,13 @@ function roleFlags(role: Role, permissions: Permission): string[] {
   return [...READ_ONLY, "--permission-mode", MODES[permissions].routing];
 }
 
+/**
+ * Roles that also load the owner's own MCP servers (Tartib, a browser...) from their Claude config. The owner's
+ * choice (docs/decisions.md): only the Coordinator, which talks to the owner, who approves each call. Captains and
+ * workers get brigade's server alone.
+ */
+const OWN_MCP_SERVERS: ReadonlySet<Role> = new Set<Role>(["coordinator"]);
+
 /** Builds the `claude` command for one agent, and writes its MCP config and system prompt in its folder. */
 export async function prepareClaude(req: HarnessLaunchRequest, files: HarnessFiles): Promise<HarnessLaunch> {
   const promptFile = await writeAgentFile(files.agentDir, "system-prompt.md", req.systemPrompt);
@@ -34,7 +41,7 @@ export async function prepareClaude(req: HarnessLaunchRequest, files: HarnessFil
   // --mcp-config and --allowedTools take several values, so single-value flags sit between them and the first message.
   const argv = [
     "claude",
-    "--strict-mcp-config",
+    ...(OWN_MCP_SERVERS.has(req.role) ? [] : ["--strict-mcp-config"]),
     "--mcp-config",
     mcpFile,
     "--allowedTools",

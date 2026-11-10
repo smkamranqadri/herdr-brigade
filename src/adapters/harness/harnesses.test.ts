@@ -134,6 +134,21 @@ describe("Claude Code", () => {
     expect((await stat(path.join(agentDir, "mcp.json"))).mode & 0o777).toBe(0o600);
   });
 
+  it("loads the owner's own MCP servers for the Coordinator only; Captains and workers get brigade's alone", async () => {
+    for (const [role, strict] of [
+      ["coordinator", false],
+      ["captain", true],
+      ["worker", true],
+    ] as const) {
+      const { argv } = (await prepare(request("claude", { role }))).launch;
+      expect([role, argv.includes("--strict-mcp-config")]).toEqual([role, strict]);
+      expect(argv.slice(argv.indexOf("--allowedTools"), argv.indexOf("--allowedTools") + 2)).toEqual([
+        "--allowedTools",
+        "mcp__brigade",
+      ]);
+    }
+  });
+
   it.each([
     ["worker", "ask", "acceptEdits"],
     ["worker", "auto", "auto"],

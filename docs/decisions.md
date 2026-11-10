@@ -68,6 +68,13 @@ Claude Code and Codex ask once per folder whether to trust it. Brigade answers y
 
 Rejected: hooks off for everyone (the owner's checks never run on brigade commits), and hooks on for everyone (a sandboxed Codex worker could escape through a hook).
 
+## The Coordinator loads the owner's own MCP servers (2026-11-10, owner's choice)
+
+The owner asked the Coordinator for their to-do list in Tartib, but a Claude agent started with `--strict-mcp-config` loads brigade's MCP server alone. A Claude Coordinator now starts without that flag, so it also loads the owner's own servers from their Claude config (Tartib, a browser, Pencil...). Calls to them still need the owner's approval at the `ask` level: only `mcp__brigade` is pre-allowed. Captains and workers keep brigade's server alone.
+
+- **Rejected:** a per-role list of named servers (more precise, more config) and no change.
+- **Known gap, Codex:** Codex reads the owner's `~/.codex/config.toml`, so a Codex agent in any role already loads the owner's MCP servers there. Brigade adds its own server but does not turn those off. Not fixed yet.
+
 ## Gaps against the guide, on purpose (guide P8)
 
 - **CI (S7, Q3):** none yet; there is no remote. Add it when the repo gets one.

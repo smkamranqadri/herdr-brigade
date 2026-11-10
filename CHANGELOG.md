@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- A Claude Coordinator also loads your own MCP servers from your Claude config (for example a notes or task app), so
+  it can answer from them. Captains and workers still get brigade's server alone.
+
 ## 1.1.0 (2026-11-09)
 
 - **`repo_status`** for the Coordinator and Captains: a project's branch, ahead/behind, uncommitted changes, recent
