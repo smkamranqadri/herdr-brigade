@@ -73,7 +73,9 @@ Rejected: hooks off for everyone (the owner's checks never run on brigade commit
 The owner asked the Coordinator for their to-do list in Tartib, but a Claude agent started with `--strict-mcp-config` loads brigade's MCP server alone. A Claude Coordinator now starts without that flag, so it also loads the owner's own servers from their Claude config (Tartib, a browser, Pencil...). Calls to them still need the owner's approval at the `ask` level: only `mcp__brigade` is pre-allowed. Captains and workers keep brigade's server alone.
 
 - **Rejected:** a per-role list of named servers (more precise, more config) and no change.
-- **Known gap, Codex:** Codex reads the owner's `~/.codex/config.toml`, so a Codex agent in any role already loads the owner's MCP servers there. Brigade adds its own server but does not turn those off. Not fixed yet.
+- **Known gap, Codex:** Codex reads the owner's `~/.codex/config.toml`, so a Codex agent in any role already loads the owner's MCP servers there. Codex plugins add more servers, such as computer use. Brigade adds its own server but does not turn those off. Not fixed yet.
+- **Known gap, pi:** pi 1.5 has built-in MCP support and reads the owner's `~/.pi/agent/mcp.json`, so a pi agent in any role loads the owner's MCP servers too, with no approval prompt. `--no-mcp` is not a fix: it would also turn off brigade's own server, which `pi-extension/brigade.ts` registers through the same support. Not fixed yet.
+- **Not fixed, on purpose (2026-11-11):** the owner runs every role on Claude Code, so neither gap reaches them. `kis/intent/backlog.md` holds the fix for when a role moves to Codex or pi.
 
 ## Gaps against the guide, on purpose (guide P8)
 

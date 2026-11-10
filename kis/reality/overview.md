@@ -16,8 +16,9 @@ The latest release is v1.2.0 (2026-11-10). `CHANGELOG.md` lists each release.
 | `repo_status` | The Coordinator and Captains read a project's branch, changes, commits, worktrees and open PRs without a shell. | 1.1.0 |
 | `herdr_agents` | The Coordinator lists every live terminal in Herdr. | 1.1.0 |
 | Captain answers | A Captain answers every Coordinator request through `report`. | 1.1.0 |
-| Owner's MCP servers | A Claude Coordinator also loads the owner's own MCP servers, such as a task app. Captains and workers get brigade's server only. | 1.2.0 |
+| Owner's MCP servers | A Claude Coordinator also loads the owner's own MCP servers, such as a task app. Claude Captains and workers get brigade's server only. | 1.2.0 |
 
 ## Known defects
 
-- A Codex agent in any role loads the MCP servers in the owner's `~/.codex/config.toml`. So a Codex worker can reach the owner's own tools. `SECURITY.md` and `docs/decisions.md` record it.
+- A Codex agent in any role loads the MCP servers in the owner's `~/.codex/config.toml` and those of the owner's Codex plugins, such as computer use. So a Codex worker can reach the owner's own tools. `SECURITY.md` and `docs/decisions.md` record it.
+- A pi agent in any role loads the MCP servers in the owner's `~/.pi/agent/mcp.json`, with no approval prompt. Same records.

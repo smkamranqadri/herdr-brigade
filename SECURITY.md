@@ -43,7 +43,9 @@ are the privileged part, and the guards below are about them.
   hooks as usual. See `docs/decisions.md`.
 - **The Coordinator uses your own MCP servers.** A Claude Coordinator loads every MCP server in your Claude config, such
   as a notes app or a browser; each call needs your approval unless its level is `auto` or `bypass`. A **Codex** agent
-  in any role loads the MCP servers in your `~/.codex/config.toml`, because brigade doesn't turn them off yet.
+  in any role loads the MCP servers in your `~/.codex/config.toml` and those of your Codex plugins, such as computer
+  use. A **pi** agent in any role loads the MCP servers in your `~/.pi/agent/mcp.json`, with no approval prompt. Brigade
+  doesn't turn these off yet, so run Captains and workers on Claude Code if your own tools must stay out of reach.
 - **The Coordinator can see all your terminals.** `herdr_agents` lists every live terminal in Herdr with its program,
   status, space/tab and folder, so the Coordinator's model sees those folder names too. It reads nothing inside them.
 - **The event log is plain text.** `~/.local/state/herdr-brigade/events.jsonl` keeps tasks, messages, notes and pull

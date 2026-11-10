@@ -20,7 +20,8 @@ const ROUTING_ONLY: Readonly<Record<Role, readonly string[]>> = {
 
 /**
  * Builds the `pi` command for one agent. pi has no per-run MCP flag, so brigade's own extension registers the server
- * for this session from a file named by `--brigade-mcp`. pi has no permission prompts, so every level runs alike.
+ * for this session from a file named by `--brigade-mcp`. pi also loads the owner's own servers from
+ * `~/.pi/agent/mcp.json`, a known gap (docs/decisions.md). pi has no permission prompts, so every level runs alike.
  * `--no-approve` ignores a repo's own pi extensions and settings: a cloned repo can't run code through them.
  */
 export async function preparePi(req: HarnessLaunchRequest, files: HarnessFiles): Promise<HarnessLaunch> {
