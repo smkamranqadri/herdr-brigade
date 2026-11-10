@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 (2026-11-10)
 
 - A Claude Coordinator also loads your own MCP servers from your Claude config (for example a notes or task app), so
   it can answer from them. Captains and workers still get brigade's server alone.

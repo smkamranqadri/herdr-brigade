@@ -1,6 +1,6 @@
 {
   "name": "herdr-brigade",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A brigade of coding agents (Claude Code, Codex, pi) inside herdr-app.",
   "license": "MIT",
   "private": true,
