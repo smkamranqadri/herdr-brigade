@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The Brigade panel can sit in a column of its own, so it stays on screen in every space. An icon, or the `brigade.toggle` key command, folds it to a rail with the Coordinator, each project and its open tasks, as icons you can click (`docs/herdr-app.md`).
+
 ## 1.2.0 (2026-11-10)
 
 - A Claude Coordinator also loads your own MCP servers from your Claude config (for example a notes or task app), so

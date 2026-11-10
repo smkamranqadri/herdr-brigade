@@ -2,7 +2,18 @@ import { describe, expect, it } from "vitest";
 import { deriveNotes } from "../src/domain/notes.ts";
 import { derivePrs as domainDerivePrs } from "../src/domain/pullRequests.ts";
 import { deriveTasks as domainDeriveTasks } from "../src/domain/tasks.ts";
-import { buildModel, configProjects, derivePrs, deriveTasks, eventText, noteCounts, parseEvents } from "./model.js";
+import {
+  buildModel,
+  configProjects,
+  derivePrs,
+  deriveTasks,
+  eventText,
+  isRail,
+  noteCounts,
+  panelWidth,
+  parseEvents,
+  toggledWidth,
+} from "./model.js";
 
 const spec = { harness: "codex", model: "gpt-x", effort: "low", permissions: "auto" };
 const created = (task, title, terminal, at) => ({
@@ -249,5 +260,39 @@ describe("PR chips", () => {
       headSha: "abc",
       checkedAt: "2026-11-09T10:06:00.000Z",
     });
+  });
+});
+
+describe("the panel's column", () => {
+  const tree = (px) => ({
+    id: "root",
+    type: "row",
+    children: [
+      { id: "work", type: "column", children: [{ id: "main", type: "block" }] },
+      { id: "brigade", type: "block", size: { px }, content: { mod: "brigade" } },
+    ],
+  });
+
+  it("reads the brigade column's width anywhere in the layout", () => {
+    expect(panelWidth(tree(368))).toBe(368);
+    expect(panelWidth({ id: "root", children: [{ id: "outer", children: [tree(300)] }] })).toBe(300);
+  });
+
+  it("has no width in a layout without the column, as in a window", () => {
+    expect(panelWidth({ id: "root", children: [{ id: "main" }] })).toBeNull();
+    expect(panelWidth(null)).toBeNull();
+  });
+
+  it("draws the rail below 160 px, and never without a column", () => {
+    expect(isRail(44)).toBe(true);
+    expect(isRail(159)).toBe(true);
+    expect(isRail(160)).toBe(false);
+    expect(isRail(null)).toBe(false);
+  });
+
+  it("folds to the 44 px rail and unfolds to the saved width, else 368 px", () => {
+    expect(toggledWidth(400, undefined)).toBe(44);
+    expect(toggledWidth(44, 420)).toBe(420);
+    expect(toggledWidth(44, undefined)).toBe(368);
   });
 });

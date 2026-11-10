@@ -13,7 +13,7 @@ const NOT_SEEN_YET = "no running terminal";
 const FOCUS_WAIT_MS = 10_000;
 const FOCUS_RETRY_MS = 500;
 /** The mod's files, copied as they are. config.js is written by the install. */
-const MOD_FILES = ["main.js", "model.js", "mod.json", "brigade.svg"];
+const MOD_FILES = ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg"];
 
 export function herdrAppRunner(bin: string): HerdrAppRunner {
   return (args) =>

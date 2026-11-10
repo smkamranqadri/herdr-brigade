@@ -1,12 +1,15 @@
 // The Brigade panel for herdr-app: the Coordinator, each project's Captain and tasks with live status, and the latest
 // events. A click on a row shows that agent's terminal over your tab (peek), where you chat with it. It only shows; it changes nothing.
-import { View, div } from "gpui-kit";
+// In its own layout column, an icon (or the "brigade.toggle" key) folds it to a rail, as the left sidebar does.
+import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, terminals, theme, run, readTextFile, watchFolder } from "herdr";
+import { exec, layout, nextCommand, terminals, theme, run, readTextFile, setShared, shared, watchFolder } from "herdr";
 import { CONFIG_FILE, START, STATE_DIR } from "./config.js";
-import { buildModel, configProjects, parseEvents } from "./model.js";
+import { PANEL_ID, buildModel, configProjects, isRail, panelWidth, parseEvents, toggledWidth } from "./model.js";
 
 const EVENTS_FILE = `${STATE_DIR}/events.jsonl`;
+/** The column's width before it folded, so unfolding brings it back. */
+const WIDTH_KEY = "brigade.width";
 /** Used only while the state folder doesn't exist yet, so it can't be watched. */
 const RETRY_MS = 5000;
 /** brigade start waits up to 30 s for a trust prompt, then up to 10 s for herdr-app to see the terminal. */
@@ -22,6 +25,144 @@ export default class Brigade extends View {
     this.starting = false;
     this.startError = null;
     this.watch(cx);
+    this.listen(cx);
+  }
+
+  /** Key commands: "brigade.toggle" in keys.json. */
+  listen(cx) {
+    cx.spawn(async (cx) => {
+      for (;;) {
+        if ((await nextCommand()) === "toggle") this.toggle();
+        cx.notify();
+      }
+    });
+  }
+
+  /** Folds the column to the rail or back. Does nothing in a window, which has no column. */
+  toggle() {
+    const px = panelWidth(layout());
+    if (px === null) return;
+    if (!isRail(px)) setShared(WIDTH_KEY, px);
+    run("layout.resize", { id: PANEL_ID, px: toggledWidth(px, shared(WIDTH_KEY)) });
+  }
+
+  toggleButton(t, folded) {
+    return div()
+      .id("panel-toggle")
+      .size(26)
+      .flex_none()
+      .flex()
+      .items_center()
+      .justify_center()
+      .rounded(6)
+      .text_color(t.muted)
+      .hover((s) => s.bg(t.hover).text_color(t.foreground))
+      .tooltip(folded ? "Show Brigade" : "Hide Brigade")
+      .on_click(() => this.toggle())
+      .child(svg("mods/brigade/panel.svg").size(15));
+  }
+
+  /**
+   * One 32 px rail cell, like the left sidebar's: an icon or letter, with a status dot in its corner. A click shows
+   * that agent (or runs `onClick`); the tooltip names it.
+   */
+  railCell(id, face, status, tip, t, onClick) {
+    return h_flex()
+      .id(id)
+      .relative()
+      .w(32)
+      .h(26)
+      .flex_none()
+      .rounded(6)
+      .justify_center()
+      .items_center()
+      .hover((s) => s.bg(t.hover))
+      .tooltip(tip)
+      .when(onClick !== null, (el) => el.on_click(onClick))
+      .child(face)
+      .when(status !== undefined, (el) => el.child(div().absolute().top(3).right(3).child(this.dot(status, t))));
+  }
+
+  /** A letter in a small square, as the left sidebar draws a space. */
+  letter(text, t) {
+    return h_flex()
+      .size(18)
+      .rounded(5)
+      .bg(t.raised)
+      .items_center()
+      .justify_center()
+      .text_size(10.5)
+      .font_bold()
+      .text_color(t.foreground)
+      .child([...text][0]?.toUpperCase() ?? "?");
+  }
+
+  /**
+   * The folded column: the toggle, then the Coordinator (or Start), and each project's Captain with a dot per open
+   * task. Each cell opens its agent, as the full panel's rows do.
+   */
+  rail(m, t) {
+    const peek = (address) => (address === null ? null : () => run("terminal.peek", { terminal: address }));
+    const coordinator =
+      m.coordinator === null
+        ? this.railCell(
+            "rail-start",
+            div()
+              .text_color(t.muted)
+              .child(this.starting ? "…" : "▶"),
+            undefined,
+            this.startError ?? (this.starting ? "Starting…" : "Start brigade"),
+            t,
+            (_e, cx) => this.start(cx),
+          )
+        : this.railCell(
+            "rail-coordinator",
+            svg("mods/brigade/brigade.svg").size(15).text_color(t.muted),
+            m.coordinator.status,
+            `Coordinator · ${m.coordinator.status ?? "starting"}`,
+            t,
+            peek(m.coordinator.address),
+          );
+    const project = (p) => {
+      const open = p.tasks.filter((task) => task.state !== "finished");
+      return v_flex()
+        .gap(2)
+        .items_center()
+        .child(
+          this.railCell(
+            `rail-${p.name}`,
+            this.letter(p.name, t),
+            p.captain?.status,
+            `${p.name} · ${p.captain ? `Captain ${p.captain.status ?? "starting"}` : "no Captain"} · ${open.length} open ${open.length === 1 ? "task" : "tasks"}`,
+            t,
+            peek(p.captain?.address ?? null),
+          ),
+        )
+        .children(
+          open.map((task) =>
+            this.railCell(
+              `rail-task-${task.id}`,
+              this.dot(task.waiting ? "blocked" : task.status, t),
+              undefined,
+              `${task.title} · ${task.waiting ? "waiting on you" : task.state}`,
+              t,
+              peek(task.address),
+            ),
+          ),
+        );
+    };
+    return v_flex()
+      .size_full()
+      .bg(t.surface)
+      .py(10)
+      .gap(6)
+      .items_center()
+      .text_size(12)
+      .overflow_y_scrollbar()
+      .child(this.toggleButton(t, true))
+      .child(coordinator)
+      .child(div().w(24).h(1).flex_none().bg(t.border))
+      .children(m.projects.map(project));
   }
 
   watch(cx) {
@@ -167,6 +308,8 @@ export default class Brigade extends View {
   render() {
     const t = theme();
     const m = buildModel(terminals(), this.events, this.projects);
+    const px = panelWidth(layout());
+    if (isRail(px)) return this.rail(m, t);
     const label = (text) => div().text_size(11).text_color(t.dim).child(text);
     return v_flex()
       .size_full()
@@ -180,7 +323,13 @@ export default class Brigade extends View {
         // The title and the counts on two lines: one line doesn't fit the 368 px side panel.
         v_flex()
           .gap(4)
-          .child(div().text_size(15).font_semibold().child("Brigade"))
+          .child(
+            h_flex()
+              .items_center()
+              .justify_between()
+              .child(div().text_size(15).font_semibold().child("Brigade"))
+              .when(px !== null, (el) => el.child(this.toggleButton(t, false))),
+          )
           .child(
             h_flex()
               .flex_wrap()

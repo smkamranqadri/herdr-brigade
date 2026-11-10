@@ -41,7 +41,7 @@ npm run brigade -- init          # writes ~/.config/herdr-brigade/config.json
 npm run brigade -- mod install   # installs the Brigade panel into herdr-app
 ```
 
-`init` writes a starter config: the Coordinator on Claude Code (`claude-opus-5-5`), Captains and workers on `claude-sonnet-5-5`. Change any role in the file. Open the panel as a window with `npm run brigade -- panel`. A button beside Automations is optional and needs the `auto-tabs` mod; see [docs/herdr-app.md](docs/herdr-app.md). Brigade itself doesn't need the panel.
+`init` writes a starter config: the Coordinator on Claude Code (`claude-opus-5-5`), Captains and workers on `claude-sonnet-5-5`. Change any role in the file. To keep the panel on screen in every space, give it a column of its own in your herdr-app layout, with a fold icon and key; see [docs/herdr-app.md](docs/herdr-app.md). Or open it as a window with `npm run brigade -- panel`. Brigade itself doesn't need the panel.
 
 ### First steps
 

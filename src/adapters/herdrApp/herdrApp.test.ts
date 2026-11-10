@@ -55,7 +55,7 @@ describe("HerdrApp.show", () => {
 describe("installMod", () => {
   it("copies the mod's files into mods/brigade and writes its state folder into config.js", async () => {
     const source = await mkdtemp(path.join(tmpdir(), "brigade-mod-src-"));
-    for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "model.test.js"])
+    for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg", "model.test.js"])
       await writeFile(path.join(source, f), f);
     const home = await mkdtemp(path.join(tmpdir(), "brigade-herdr-home-"));
     const start = ["env", "BRIGADE_STATE=/s", "/bin/node", "/app/cli.ts", "start"];
@@ -65,7 +65,14 @@ describe("installMod", () => {
       start,
     });
     expect(target).toBe(path.join(home, "mods", "brigade"));
-    expect((await readdir(target)).sort()).toEqual(["brigade.svg", "config.js", "main.js", "mod.json", "model.js"]);
+    expect((await readdir(target)).sort()).toEqual([
+      "brigade.svg",
+      "config.js",
+      "main.js",
+      "mod.json",
+      "model.js",
+      "panel.svg",
+    ]);
     expect(await readFile(path.join(target, "config.js"), "utf8")).toBe(
       [
         '// Written by "brigade mod install"; run it again to change.',

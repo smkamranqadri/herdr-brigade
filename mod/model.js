@@ -182,3 +182,34 @@ export function buildModel(terminals, events, configured = []) {
       .map((e) => ({ at: e.at, text: eventText(e) })),
   };
 }
+
+/** The id of the panel's own column in a layout (docs/herdr-app.md). Its toggle resizes that block. */
+export const PANEL_ID = "brigade";
+/** The folded panel's width, as wide as the left sidebar's rail. */
+const RAIL_PX = 44;
+const DEFAULT_PX = 368;
+/** Narrower than this, the panel draws the rail: the left sidebar's rule, so dragging the edge folds it too. */
+const RAIL_BELOW_PX = 160;
+
+function findNode(node, id) {
+  if (node?.id === id) return node;
+  for (const child of node?.children ?? []) {
+    const found = findNode(child, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** The panel column's width in px, or null when the layout has no such column (the panel shows as a window). */
+export function panelWidth(layout) {
+  return findNode(layout, PANEL_ID)?.size?.px ?? null;
+}
+
+export function isRail(px) {
+  return px !== null && px < RAIL_BELOW_PX;
+}
+
+/** Where a toggle takes the column: from full width to the rail, or back to the width it had before. */
+export function toggledWidth(px, saved) {
+  return isRail(px) ? (saved ?? DEFAULT_PX) : RAIL_PX;
+}
