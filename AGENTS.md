@@ -40,7 +40,22 @@ A new dependency, a change to the layers, anything that writes to the owner's gl
 
 ## Pointers
 
-- `docs/plan-phase-1.md`: the current plan.
+- `kis/state/current.md`: what is happening now. Phases 1 and 2 are done (`docs/plan-phase-1.md`, `docs/plan-phase-2.md`).
 - `docs/architecture.md`: layers and where new code goes.
 - `docs/decisions.md`: dependencies and decisions, with reasons.
 - `REVIEW.md`: what a reviewer checks.
+
+<!-- kis:anchor:start -->
+## KIS Project Memory
+
+This project uses KIS memory under `kis/`. Knowledge = stable facts. Intent = goals and plans. Reality = what shipped. State = what is happening now.
+
+- Read `kis/state/` before planning or implementing, then only the Intent, Reality, and Knowledge the task needs.
+- Put each fact in exactly one layer, and update an existing file instead of creating a new one.
+- Prove work with real command or verification output before marking anything done.
+- Synchronize the KIS layers that changed when work finishes.
+- Full instructions: `.agents/skills/kis/SKILL.md`.
+- Commands live in `.agents/skills/kis/commands/`: start, plan, act, sync, check, init.
+  Claude `/kis:start`, Pi and OpenCode `/kis-start`, Codex `/prompts:kis-start`.
+  Antigravity has no custom slash commands: name the step and follow its command file.
+<!-- kis:anchor:end -->

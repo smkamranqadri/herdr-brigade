@@ -1,6 +1,6 @@
 # Phase 2 plan
 
-Status: revised after the plan review (`docs/reviews.md`); the owner's four decisions are in. Waiting for approval to start. Date: 2026-11-09.
+Status: done 2026-11-09. Revised after the plan review (`docs/reviews.md`), with the owner's four decisions below.
 
 ## Goal
 
