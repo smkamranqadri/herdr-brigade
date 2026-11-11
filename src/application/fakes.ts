@@ -57,6 +57,11 @@ class FakeTerminals {
     this.trustAnswered.push(address);
     return Promise.resolve(this.trustOutcomes.shift() ?? this.trustOutcome);
   }
+  readonly keptOff: string[] = [];
+  keepOff(address: string): Promise<void> {
+    this.keptOff.push(address);
+    return Promise.resolve();
+  }
   readonly removed: string[] = [];
   remove(address: string): Promise<void> {
     this.removed.push(address);

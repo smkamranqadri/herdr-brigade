@@ -17,6 +17,8 @@ export interface TerminalLaunch {
   readonly labels: Readonly<Record<string, string>>;
   /** The parent's terminal; null runs it with no parent and no notes typed into one. */
   readonly parent: string | null;
+  /** Keep running when the parent's program ends. False: it ends with its parent. */
+  readonly outliveParent: boolean;
   readonly argv: readonly string[];
 }
 
@@ -44,6 +46,11 @@ export interface Terminals {
   answerTrust(address: string, trust: TrustPrompt): Promise<TrustOutcome>;
   /** Ends the terminal if it still runs and removes it, so its name is free. */
   remove(address: string): Promise<void>;
+  /**
+   * Turns hc's core keep off and checks that it is off. With keep on, a reboot leaves a shell in place of the agent,
+   * where the owner's tools can resume it without brigade's limits. Fails if keep stays on.
+   */
+  keepOff(address: string): Promise<void>;
   /** Types text into the terminal and presses Enter, waiting while a just-started agent settles. */
   send(address: string, text: string): Promise<void>;
   /** Live terminals that carry all of these labels. */

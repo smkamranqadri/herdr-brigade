@@ -23,6 +23,7 @@ describe("createTask", () => {
         title: "Fix the login bug",
       },
       parent: "t3",
+      outliveParent: true,
       argv: ["codex", "bg-task-000001", "--", "Fix it."],
     });
     expect(f.harnesses.requests[0]?.firstMessage).toBe("Fix it.");

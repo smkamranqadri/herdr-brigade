@@ -52,7 +52,7 @@ With core keep on, hc puts a shell where an agent was lost to a reboot. The owne
 ## Scope
 
 - [x] **T0 Probe.** Live, with no model calls, in a space named `brigade-probe`. The owner approves each herdr-app and hc command that acts on the window or a terminal. Check every fact above that can be checked without a window restart or a reboot. Record the results in `docs/herdr-app.md`. Stop and replan with the owner if a fact is wrong, or if brigade cannot remove the shell tab that `space.new` makes.
-- [ ] **T1 hc changes.** In `src/application/ports.ts` and `src/adapters/hc/hcTerminals.ts`:
+- [x] **T1 hc changes.** In `src/application/ports.ts` and `src/adapters/hc/hcTerminals.ts`:
   - `TerminalLaunch` gets `outliveParent: boolean`. `launchOnce` (`src/application/launch.ts`) sets it to `role === "worker"`. The adapter adds `--outlive-parent` only when it is true. Tests check the launch request and the exact hc argv for each role.
   - `Terminals` gets `keepOff(address)`. It runs `hc keep <t> --off`, then reads the flag with `hc get`, and fails with a message if it is still on.
 - [ ] **T2 Workspace port.** In `src/application/ports.ts`:

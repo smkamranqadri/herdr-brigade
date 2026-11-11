@@ -1,7 +1,7 @@
 import type { AgentSpec } from "../domain/agent.ts";
 import { BrigadeError } from "../domain/errors.ts";
 import type { NewEvent } from "../domain/events.ts";
-import type { Deps, LaunchContext, TerminalInfo } from "./ports.ts";
+import type { Deps, LaunchContext, TerminalInfo, TerminalLaunch } from "./ports.ts";
 
 /** The label every brigade terminal carries, so brigade and the mod can find them. */
 const BRIGADE_LABEL = "brigade";
@@ -60,13 +60,20 @@ function labelsFor(a: AgentLaunch): Record<string, string> {
   return labels;
 }
 
+function terminalFor(a: AgentLaunch, argv: readonly string[]): TerminalLaunch {
+  const { name, cwd, context } = a;
+  // A Captain ends with the Coordinator; a worker keeps running, so a closed space does not lose its work.
+  const outliveParent = context.role === "worker";
+  return { name, cwd, labels: labelsFor(a), parent: context.parent, outliveParent, argv };
+}
+
 /** One start. On no_session it stops there: nothing was typed in, so the caller can start again. */
 async function launchOnce(
   deps: Deps,
   a: AgentLaunch,
   started: (address: string) => NewEvent,
 ): Promise<{ address: string; result: "started" | "no_session" }> {
-  const { role, parent } = a.context;
+  const { role } = a.context;
   const systemPrompt = await deps.prompts.render(role, { OWNER: deps.config.owner, ...a.promptValues });
   const plan = await deps.harnesses.prepare({
     role,
@@ -79,8 +86,7 @@ async function launchOnce(
     readDirs: a.readDirs ?? [],
     resume: a.resume ?? false,
   });
-  const labels = labelsFor(a);
-  const address = await deps.terminals.launch({ name: a.name, cwd: a.cwd, labels, parent, argv: plan.argv });
+  const address = await deps.terminals.launch(terminalFor(a, plan.argv));
   await record(deps, started(address));
   const trust = plan.trust ? await deps.terminals.answerTrust(address, plan.trust) : "ready";
   if (trust === "timeout") throw notReady(role, address);

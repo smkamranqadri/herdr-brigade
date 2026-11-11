@@ -47,6 +47,7 @@ describe("HcTerminals.launch", () => {
       cwd: "/w",
       labels: { brigade: "main", role: "worker" },
       parent: "t3",
+      outliveParent: true,
       argv: ["claude", "--model", "m", "Fix it"],
     });
     expect(address).toBe("t7");
@@ -77,12 +78,18 @@ describe("HcTerminals.launch", () => {
 
   it("runs with no parent and no notes when there is no parent", async () => {
     const { terminals, calls } = scripted({ run: '{"address":"t1"}' });
-    await terminals.launch({ name: "bg-coordinator", cwd: "/c", labels: {}, parent: null, argv: ["claude"] });
+    await terminals.launch({
+      name: "bg-coordinator",
+      cwd: "/c",
+      labels: {},
+      parent: null,
+      outliveParent: false,
+      argv: ["claude"],
+    });
     expect(calls[0]).toEqual([
       "run",
       "--json",
       "--bg",
-      "--outlive-parent",
       "--name",
       "bg-coordinator",
       "--cwd",
@@ -94,11 +101,58 @@ describe("HcTerminals.launch", () => {
     ]);
   });
 
+  it("leaves out --outlive-parent when the terminal must end with its parent", async () => {
+    const { terminals, calls } = scripted({ run: '{"address":"t4"}' });
+    await terminals.launch({
+      name: "bg-cap-shop",
+      cwd: "/s",
+      labels: {},
+      parent: "t9",
+      outliveParent: false,
+      argv: ["claude"],
+    });
+    expect(calls[0]).toEqual([
+      "run",
+      "--json",
+      "--bg",
+      "--name",
+      "bg-cap-shop",
+      "--cwd",
+      "/s",
+      "--parent",
+      "t9",
+      "--",
+      "claude",
+    ]);
+  });
+
   it("fails loudly when hc returns no address", async () => {
     const { terminals } = scripted({ run: "{}" });
-    await expect(terminals.launch({ name: "x", cwd: "/", labels: {}, parent: null, argv: ["a"] })).rejects.toThrow(
-      "hc run returned no address for x",
+    const req = { name: "x", cwd: "/", labels: {}, parent: null, outliveParent: false, argv: ["a"] };
+    await expect(terminals.launch(req)).rejects.toThrow("hc run returned no address for x");
+  });
+});
+
+describe("HcTerminals.keepOff", () => {
+  it("turns core keep off, then reads it back", async () => {
+    const { terminals, calls } = scripted({ keep: "{}", get: '{"address":"t4","keep":false}' });
+    await terminals.keepOff("t4");
+    expect(calls).toEqual([
+      ["keep", "t4", "--off"],
+      ["get", "t4", "--json"],
+    ]);
+  });
+
+  it("fails and names the fix when keep is still on", async () => {
+    const { terminals } = scripted({ keep: "{}", get: '{"address":"t4","keep":true}' });
+    await expect(terminals.keepOff("t4")).rejects.toThrow(
+      /^Core keep is still on for t4\. Turn it off with: hc keep t4 --off$/,
     );
+  });
+
+  it("fails when hc does not say whether keep is on", async () => {
+    const { terminals } = scripted({ keep: "{}", get: '{"address":"t4"}' });
+    await expect(terminals.keepOff("t4")).rejects.toThrow("Core keep is still on for t4");
   });
 });
 

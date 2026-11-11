@@ -15,6 +15,7 @@ describe("startCoordinator", () => {
         cwd: "/state/coordinator",
         labels: { brigade: "main", role: "coordinator", harness: "claude" },
         parent: null,
+        outliveParent: false,
         argv: ["claude", "bg-coordinator"],
       },
     ]);
@@ -100,7 +101,12 @@ describe("sendToCaptain", () => {
     expect(reply).toBe(
       "Sent to the shop Captain, which was started for it. End your turn; its report arrives as a [brigade] message.",
     );
-    expect(f.terminals.launched[0]).toMatchObject({ name: "bg-cap-shop", cwd: "/state/captains/shop", parent: "t9" });
+    expect(f.terminals.launched[0]).toMatchObject({
+      name: "bg-cap-shop",
+      cwd: "/state/captains/shop",
+      parent: "t9",
+      outliveParent: false,
+    });
     expect(f.folders.ensured).toEqual(["/state/captains/shop"]);
     expect(f.launchesAtEnsure).toEqual([0]);
     expect(f.harnesses.requests[0]).toMatchObject({ resume: true, readDirs: ["/repos/shop"] });

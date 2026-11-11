@@ -110,7 +110,8 @@ export class HcTerminals implements Terminals {
 
   async launch(req: TerminalLaunch): Promise<string> {
     // --json goes right after the subcommand: everything after "--" belongs to the program.
-    const args = ["run", "--json", "--bg", "--outlive-parent", "--name", req.name, "--cwd", req.cwd];
+    const args = ["run", "--json", "--bg", ...(req.outliveParent ? ["--outlive-parent"] : []), "--name", req.name];
+    args.push("--cwd", req.cwd);
     for (const [k, v] of Object.entries(req.labels)) args.push("--label", `${k}=${v}`);
     if (req.parent) args.push("--parent", req.parent);
     else args.push("--no-parent", "--no-notify");
@@ -150,6 +151,14 @@ export class HcTerminals implements Terminals {
   }
 
   /** hc kill answers for a terminal that already ended too; hc rm then frees its name. */
+  async keepOff(address: string): Promise<void> {
+    await this.run(["keep", address, "--off"]);
+    const got: unknown = JSON.parse(await this.run(["get", address, "--json"]));
+    const on = typeof got === "object" && got !== null && "keep" in got ? got.keep : undefined;
+    if (on !== false)
+      throw new Error(`Core keep is still on for ${address}. Turn it off with: hc keep ${address} --off`);
+  }
+
   async remove(address: string): Promise<void> {
     await this.run(["kill", address]);
     await this.run(["rm", address]);
