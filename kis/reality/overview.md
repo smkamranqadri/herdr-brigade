@@ -18,6 +18,7 @@ The latest release is v1.2.0 (2026-11-10). `CHANGELOG.md` lists each release.
 | Captain answers | A Captain answers every Coordinator request through `report`. | 1.1.0 |
 | Owner's MCP servers | A Claude Coordinator also loads the owner's own MCP servers, such as a task app. Claude Captains and workers get brigade's server only. | 1.2.0 |
 | Panel column and rail | The panel can sit in its own layout column, so it stays in every space. An icon or the `brigade.toggle` key folds it to a rail of clickable agent icons (`docs/herdr-app.md`). | Unreleased (`8082856`) |
+| Resume | The Coordinator and each Captain continue their last conversation after a stop or a reboot, on Claude, Codex or pi. Each Captain runs in a folder of its own and reads its repo from there. `brigade start --new` starts the Coordinator in a new conversation. | Unreleased (`da84d99`) |
 
 ## Known defects
 
