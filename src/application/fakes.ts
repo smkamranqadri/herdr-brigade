@@ -19,6 +19,7 @@ import type {
   TerminalLaunch,
   TrustOutcome,
   TrustPrompt,
+  Workspace,
 } from "./ports.ts";
 
 export const TEST_CONFIG: BrigadeConfig = {
@@ -58,9 +59,13 @@ class FakeTerminals {
     return Promise.resolve(this.trustOutcomes.shift() ?? this.trustOutcome);
   }
   readonly keptOff: string[] = [];
+  /** Terminals whose keepOff fails. */
+  readonly keepOffFails = new Set<string>();
   keepOff(address: string): Promise<void> {
     this.keptOff.push(address);
-    return Promise.resolve();
+    return this.keepOffFails.has(address)
+      ? Promise.reject(new Error(`Core keep is still on for ${address}.`))
+      : Promise.resolve();
   }
   readonly removed: string[] = [];
   remove(address: string): Promise<void> {
@@ -73,7 +78,10 @@ class FakeTerminals {
     this.sent.push({ address, text });
     return Promise.resolve();
   }
+  /** When set, find fails with it, as when hc does not answer. */
+  findError: Error | null = null;
   find(labels: Readonly<Record<string, string>>): Promise<TerminalInfo[]> {
+    if (this.findError) return Promise.reject(this.findError);
     const hits = this.live.filter((t) => Object.entries(labels).every(([k, v]) => t.labels[k] === v));
     return Promise.resolve(hits.map(({ address, name, status }) => ({ address, name, status })));
   }
@@ -289,6 +297,24 @@ const FIXED = {
   captainsFolder: "/state/captains",
   defaultRepoRoots: ["/home/sam/Repositories"],
 };
+
+/** A Workspace that records what it showed. */
+export class FakeWorkspace implements Workspace {
+  readonly checks: number[] = [];
+  readonly opened: { address: string; first: boolean }[] = [];
+  checkError: Error | null = null;
+  /** Terminals whose open fails. */
+  readonly openFails = new Set<string>();
+
+  check(): Promise<void> {
+    this.checks.push(this.opened.length);
+    return this.checkError ? Promise.reject(this.checkError) : Promise.resolve();
+  }
+  open(address: string, { first }: { readonly first: boolean }): Promise<void> {
+    this.opened.push({ address, first });
+    return this.openFails.has(address) ? Promise.reject(new Error(`no tab for ${address}`)) : Promise.resolve();
+  }
+}
 
 /** Folders that note how many terminals had been launched each time one is made. */
 function watchedFolders(terminals: FakeTerminals): { folders: FakeFolders; launchesAtEnsure: number[] } {

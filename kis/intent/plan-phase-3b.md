@@ -59,7 +59,7 @@ With core keep on, hc puts a shell where an agent was lost to a reboot. The owne
   - `check()`: fails with a clear message when the window is not running.
   - `open(address, {first})`: shows the terminal's tab. If the terminal has no tab, it makes one in the Brigade space, and makes the space when it is missing. With `first`, a tab in the Brigade space moves to position 1. A tab in another space is shown and not moved.
 - [x] **T3 herdr-app adapter.** `src/adapters/herdrApp/herdrApp.ts` implements the port with `herdr-app status`, `ls`, `space.new`, `space.select`, `terminal.keep`, `tab.move`, `tab.select` and `tab.close`. It finds the space by name "Brigade" and the Coordinator folder. After `terminal.keep`, it reads `ls` again. If the new tab is not in the Brigade space, it fails with a message and moves nothing. It closes the shell tab that `space.new` made only after the new tab is in the space: a space with no tabs is removed. Tests use a fake runner with `ls` output taken from a real run (fictional ids).
-- [ ] **T4 Use cases.** In `src/application/coordinator.ts`:
+- [x] **T4 Use cases.** In `src/application/coordinator.ts`:
   - `openBrigade(deps, workspace, {fresh})` follows the flow above. It also checks that hc answers before it starts anything. At the end it calls `keepOff` on every brigade terminal.
   - `keepOff` runs on the terminal after every `workspace.open`, also when `open` fails. If `keepOff` fails, the error names the terminal and the command `hc keep <t> --off`.
   - The final `keepOff` sweep also runs when an earlier step fails. It tries every brigade terminal and reports all failures together.

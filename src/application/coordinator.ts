@@ -5,7 +5,7 @@ import { prLine } from "../domain/pullRequests.ts";
 import { deriveTasks } from "../domain/tasks.ts";
 import { refreshPrs } from "./publish.ts";
 import { findTerminals, launchAgent, record, terminalName } from "./launch.ts";
-import type { Deps } from "./ports.ts";
+import type { Deps, Workspace } from "./ports.ts";
 
 export function projectNamed(deps: Deps, name: string): ProjectConfig {
   const project = deps.config.projects.find((p) => p.name === name);
@@ -44,6 +44,75 @@ export async function startCoordinator(
     (terminal) => ({ kind: "agent_started", role: "coordinator", project: null, terminal, spec }),
   );
   return { address, started: true };
+}
+
+const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+
+/** Shows the terminal's tab, then turns core keep off on it, also when showing failed: herdr-app turns it on. */
+async function openTab(deps: Deps, workspace: Workspace, address: string, first: boolean): Promise<void> {
+  try {
+    await workspace.open(address, { first });
+  } finally {
+    await deps.terminals.keepOff(address);
+  }
+}
+
+/** Turns core keep off on every brigade terminal, past any failure. Returns one line per failure. */
+async function keepOffAll(deps: Deps): Promise<string[]> {
+  const failed: string[] = [];
+  try {
+    for (const t of await findTerminals(deps, {})) {
+      await deps.terminals.keepOff(t.address).catch((err: unknown) => failed.push(messageOf(err)));
+    }
+  } catch (err) {
+    failed.push(messageOf(err));
+  }
+  return failed;
+}
+
+/** The Coordinator in tab 1, a tab for each running Captain, and the Coordinator shown last. */
+async function openTabs(deps: Deps, workspace: Workspace, coordinator: string): Promise<void> {
+  await openTab(deps, workspace, coordinator, true);
+  for (const captain of await findTerminals(deps, { role: "captain" }))
+    await openTab(deps, workspace, captain.address, false);
+  await openTab(deps, workspace, coordinator, true);
+}
+
+/**
+ * `brigade start`: checks the window and hc, starts the Coordinator unless it runs, and opens it and the running
+ * Captains in the Brigade space. Core keep is turned off on every brigade terminal at the end, also after a failure.
+ */
+export async function openBrigade(
+  deps: Deps,
+  workspace: Workspace,
+  options: { fresh?: boolean } = {},
+): Promise<{ address: string; started: boolean }> {
+  await workspace.check();
+  await findTerminals(deps, {}).catch((err: unknown) => {
+    throw new BrigadeError(`hc is not answering. Check it with "hc server status". (${messageOf(err)})`);
+  });
+  const errors: string[] = [];
+  let result: { address: string; started: boolean } | null = null;
+  try {
+    result = await startCoordinator(deps, options);
+    await openTabs(deps, workspace, result.address);
+  } catch (err) {
+    errors.push(messageOf(err));
+  }
+  errors.push(...(await keepOffAll(deps)));
+  if (errors.length > 0 || result === null) throw new BrigadeError([...new Set(errors)].join("\n"));
+  return result;
+}
+
+/** `brigade open <address>`: shows a Coordinator's or a Captain's tab. Workers are shown over the tab (peek) instead. */
+export async function openAgent(deps: Deps, workspace: Workspace, address: string): Promise<void> {
+  await workspace.check();
+  const coordinators = await findTerminals(deps, { role: "coordinator" });
+  const captains = await findTerminals(deps, { role: "captain" });
+  const isCoordinator = coordinators.some((t) => t.address === address);
+  if (!isCoordinator && !captains.some((t) => t.address === address))
+    throw new BrigadeError(`${address} is not a running Coordinator or Captain.`);
+  await openTab(deps, workspace, address, isCoordinator);
 }
 
 /**
