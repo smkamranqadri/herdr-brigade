@@ -122,7 +122,9 @@ describe("HcTerminals.answerTrust", () => {
   });
 
   it("presses Enter again when Codex drops the first press", async () => {
-    const { terminals, calls } = scripted({ read: [codexPrompt, codexPrompt, "› Ask Codex to do anything"] });
+    const { terminals, calls } = scripted({
+      read: [codexPrompt, codexPrompt, "› Ask Codex to do anything\n  ? for shortcuts"],
+    });
     expect(await terminals.answerTrust("t7", codexTrust)).toBe("answered");
     expect(keys(calls)).toEqual(["enter", "enter"]);
   });
@@ -141,10 +143,40 @@ describe("HcTerminals.answerTrust", () => {
     expect(keys(calls)).toEqual(["enter"]);
   });
 
+  it("reports no_session, pressing nothing, when the program says it found no session to resume", async () => {
+    const ended = "No conversation found to continue";
+    const { terminals, calls } = scripted({ read: ["booting", ended] });
+    expect(await terminals.answerTrust("t7", { ...claudeTrust, noSession: ended })).toBe("no_session");
+    expect(keys(calls)).toEqual([]);
+  });
+
+  it("reports no_session when the program ends that way after its trust prompt was answered", async () => {
+    const ended = "No conversation found to continue";
+    const { terminals, calls } = scripted({ read: [claudeOnYes, "", ended] });
+    expect(await terminals.answerTrust("t7", { ...claudeTrust, noSession: ended })).toBe("no_session");
+    expect(keys(calls)).toEqual(["enter"]);
+  });
+
+  it("does not look for a no-session text that the harness does not have", async () => {
+    const { terminals } = scripted({ read: ["No conversation found to continue", "› ? for shortcuts"] });
+    expect(await terminals.answerTrust("t7", claudeTrust)).toBe("ready");
+  });
+
   it("gives up after 30 seconds", async () => {
     const { terminals, calls } = scripted({ read: "booting" });
     expect(await terminals.answerTrust("t7", claudeTrust)).toBe("timeout");
     expect(calls.filter((c) => c[0] === "read")).toHaveLength(60);
+  });
+});
+
+describe("HcTerminals.remove", () => {
+  it("ends the terminal, then removes it so its name is free", async () => {
+    const { terminals, calls } = scripted({ kill: "{}", rm: '{"removed":"t7"}' });
+    await terminals.remove("t7");
+    expect(calls).toEqual([
+      ["kill", "t7"],
+      ["rm", "t7"],
+    ]);
   });
 });
 

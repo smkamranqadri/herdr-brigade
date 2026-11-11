@@ -14,7 +14,8 @@ import { buildDeps, freshDeps, loadConfig } from "./bootstrap.ts";
 import { readAgentContext, readPaths, type Paths } from "./settings.ts";
 
 const USAGE = `brigade init          write a starter config
-brigade start         start the Coordinator (once) and open it in herdr-app
+brigade start         start the Coordinator (once), continuing its last conversation, and open it in herdr-app
+brigade start --new   the same, in a new conversation
 brigade status        list the brigade's agents and tasks
 brigade panel         open or close the Brigade panel as a window
 brigade mod install   install the Brigade panel into herdr-app
@@ -58,7 +59,7 @@ function herdrApp(paths: Paths): HerdrApp {
 async function start(paths: Paths): Promise<string> {
   const deps = buildDeps(await loadConfig(paths), paths);
   await mkdir(deps.coordinatorFolder, { recursive: true });
-  const { address, started } = await startCoordinator(deps);
+  const { address, started } = await startCoordinator(deps, { fresh: process.argv[3] === "--new" });
   const verb = started ? "Started" : "Already running:";
   const where = `${verb} the Coordinator in terminal ${address}.`;
   if (!paths.herdrApp) return `${where} Open it with: hc attach ${address}`;

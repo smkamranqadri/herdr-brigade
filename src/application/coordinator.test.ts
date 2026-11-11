@@ -20,6 +20,7 @@ describe("startCoordinator", () => {
     ]);
     expect(f.harnesses.requests[0]?.firstMessage).toBeNull();
     expect(f.harnesses.requests[0]?.systemPrompt).toBe("coordinator prompt for Sam");
+    expect(f.harnesses.requests[0]).toMatchObject({ resume: true, readDirs: [] });
     expect(f.events.events).toEqual([
       {
         kind: "agent_started",
@@ -39,6 +40,51 @@ describe("startCoordinator", () => {
     expect(f.terminals.launched).toHaveLength(1);
   });
 
+  it("starts a new conversation when asked for a fresh start", async () => {
+    const f = fakeDeps();
+    await startCoordinator(f.deps, { fresh: true });
+    expect(f.harnesses.requests[0]?.resume).toBe(false);
+  });
+
+  it("refuses a fresh start while a Coordinator runs, and says how to stop it", async () => {
+    const f = fakeDeps();
+    await startCoordinator(f.deps);
+    await expect(startCoordinator(f.deps, { fresh: true })).rejects.toThrow(
+      'A Coordinator is running in t1. Stop it with "hc kill t1", then run "brigade start --new" again.',
+    );
+    expect(f.terminals.launched).toHaveLength(1);
+  });
+
+  it("starts once more with a new session when there was none to resume", async () => {
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
+    f.terminals.trustOutcomes.push("no_session");
+    expect(await startCoordinator(f.deps)).toEqual({ address: "t2", started: true });
+    expect(f.terminals.removed).toEqual(["t1"]);
+    expect(f.harnesses.requests.map((r) => r.resume)).toEqual([true, false]);
+    expect(f.events.events.map((e) => (e.kind === "agent_started" ? e.terminal : null))).toEqual(["t1", "t2"]);
+    expect(f.eventsAtTrust).toEqual([1, 2]);
+  });
+
+  it("starts once more only: a second missing session is an error", async () => {
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
+    f.terminals.trustOutcomes.push("no_session", "no_session");
+    await expect(startCoordinator(f.deps)).rejects.toThrow(
+      "The coordinator in terminal t2 started but never became ready.",
+    );
+    expect(f.terminals.launched).toHaveLength(2);
+    expect(f.terminals.removed).toEqual(["t1"]);
+  });
+
+  it("does not start again when the agent fails for another reason", async () => {
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
+    f.terminals.trustOutcomes.push("timeout");
+    await expect(startCoordinator(f.deps)).rejects.toThrow(
+      "The coordinator in terminal t1 started but never became ready.",
+    );
+    expect(f.terminals.launched).toHaveLength(1);
+    expect(f.terminals.removed).toEqual([]);
+  });
+
   it("answers the trust prompt when the harness has one", async () => {
     const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
     await startCoordinator(f.deps);
@@ -48,13 +94,16 @@ describe("startCoordinator", () => {
 });
 
 describe("sendToCaptain", () => {
-  it("starts the project's Captain in its repo with the message as its first input", async () => {
+  it("starts the project's Captain in its own folder, reading its repo, with the message as its first input", async () => {
     const f = fakeDeps();
     const reply = await sendToCaptain(f.deps, coordinator, { project: "shop", message: "Fix login" });
     expect(reply).toBe(
       "Sent to the shop Captain, which was started for it. End your turn; its report arrives as a [brigade] message.",
     );
-    expect(f.terminals.launched[0]).toMatchObject({ name: "bg-cap-shop", cwd: "/repos/shop", parent: "t9" });
+    expect(f.terminals.launched[0]).toMatchObject({ name: "bg-cap-shop", cwd: "/state/captains/shop", parent: "t9" });
+    expect(f.folders.ensured).toEqual(["/state/captains/shop"]);
+    expect(f.launchesAtEnsure).toEqual([0]);
+    expect(f.harnesses.requests[0]).toMatchObject({ resume: true, readDirs: ["/repos/shop"] });
     expect(f.terminals.launched[0]?.labels).toEqual({
       brigade: "main",
       role: "captain",
@@ -64,6 +113,14 @@ describe("sendToCaptain", () => {
     expect(f.harnesses.requests[0]?.firstMessage).toBe("[brigade] From the Coordinator: Fix login");
     expect(f.mcpContexts).toEqual([{ role: "captain", project: "shop", task: null, title: null, parent: "t9" }]);
     expect(f.terminals.sent).toEqual([]);
+  });
+
+  it("delivers a Captain's first message once when it starts again with a new session", async () => {
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
+    f.harnesses.sendFirst = true;
+    f.terminals.trustOutcomes.push("no_session");
+    await sendToCaptain(f.deps, coordinator, { project: "shop", message: "Fix login" });
+    expect(f.terminals.sent).toEqual([{ address: "t2", text: "[brigade] From the Coordinator: Fix login" }]);
   });
 
   it("types into a running Captain instead of starting another", async () => {

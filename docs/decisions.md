@@ -77,6 +77,15 @@ The owner asked the Coordinator for their to-do list in Tartib, but a Claude age
 - **Known gap, pi:** pi 1.5 has built-in MCP support and reads the owner's `~/.pi/agent/mcp.json`, so a pi agent in any role loads the owner's MCP servers too, with no approval prompt. `--no-mcp` is not a fix: it would also turn off brigade's own server, which `pi-extension/brigade.ts` registers through the same support. Not fixed yet.
 - **Not fixed, on purpose (2026-11-11):** the owner runs every role on Claude Code, so neither gap reaches them. `kis/intent/backlog.md` holds the fix for when a role moves to Codex or pi.
 
+## The Coordinator and Captains resume by folder, not by session id (2026-11-11, owner's choice)
+
+Each start of the Coordinator or a Captain continues the newest session in its own folder: `claude --continue`, `pi --continue` or `codex resume --last`. Workers start new, since a worker's conversation ends with its task.
+
+- **Why folders.** Codex can't take a session id at start. It writes its session file only after the first message, and its MCP servers see no session id variable (probed 2026-11-11). Claude and pi could take ids, but one way for all three keeps the harnesses alike.
+- **What it needs.** The newest session in a folder must be the agent's own. The Coordinator's folder already was. A Captain ran in the repo, beside the owner's own sessions, so it now runs in `<state>/captains/<project>` and reads the repo through `--add-dir` (Claude). Codex's read-only sandbox and pi already read any folder. The Captain prompt tells it to read the repo's `AGENTS.md` or `CLAUDE.md`, which no longer load by themselves.
+- **No session.** `claude --continue` prints "No conversation found to continue" and ends; brigade removes that terminal and starts once more with a new session. pi and Codex start new by themselves.
+- **Rejected:** session ids stored by brigade (no way to get Codex's), and reading Codex's private session files.
+
 ## Gaps against the guide, on purpose (guide P8)
 
 - **CI (S7, Q3):** none yet; there is no remote. Add it when the repo gets one.

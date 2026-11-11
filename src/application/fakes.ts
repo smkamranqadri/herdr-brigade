@@ -49,10 +49,20 @@ class FakeTerminals {
   trustOutcome: TrustOutcome = "answered";
   onAnswerTrust: () => void = () => undefined;
 
+  /** Outcomes for the next answerTrust calls, in order, before trustOutcome applies. */
+  readonly trustOutcomes: TrustOutcome[] = [];
+
   answerTrust(address: string): Promise<TrustOutcome> {
     this.onAnswerTrust();
     this.trustAnswered.push(address);
-    return Promise.resolve(this.trustOutcome);
+    return Promise.resolve(this.trustOutcomes.shift() ?? this.trustOutcome);
+  }
+  readonly removed: string[] = [];
+  remove(address: string): Promise<void> {
+    this.removed.push(address);
+    const i = this.live.findIndex((t) => t.address === address);
+    if (i >= 0) this.live.splice(i, 1);
+    return Promise.resolve();
   }
   send(address: string, text: string): Promise<void> {
     this.sent.push({ address, text });
@@ -90,6 +100,17 @@ class FakeHarnesses {
     const sendFirst = this.sendFirst ? req.firstMessage : null;
     const inArgv = !this.sendFirst && req.firstMessage !== null ? ["--", req.firstMessage] : [];
     return Promise.resolve({ argv: [req.spec.harness, req.agentId, ...inArgv], trust: this.trust, sendFirst });
+  }
+}
+
+/** Records each folder it was asked to make. */
+class FakeFolders {
+  readonly ensured: string[] = [];
+  onEnsure: () => void = () => undefined;
+  ensure(folder: string): Promise<void> {
+    this.onEnsure();
+    this.ensured.push(folder);
+    return Promise.resolve();
   }
 }
 
@@ -237,9 +258,12 @@ export interface Fakes {
   readonly mcpContexts: LaunchContext[];
   /** How many events the log held each time a trust prompt was answered. */
   readonly eventsAtTrust: number[];
+  /** How many terminals had been launched each time a folder was made. */
+  readonly launchesAtEnsure: number[];
   readonly configStore: FakeConfigStore;
   readonly repos: FakeRepos;
   readonly github: FakeGitHub;
+  readonly folders: FakeFolders;
 }
 
 /** Ids that count up across kinds: task-000001, note-000002, … */
@@ -257,38 +281,42 @@ const FIXED = {
   // A wait never ends unless a test says so: a deadline only passes when the test makes it.
   clock: { now: () => new Date("2026-11-08T10:00:00.000Z"), wait: () => new Promise<void>(() => undefined) },
   coordinatorFolder: "/state/coordinator",
+  captainsFolder: "/state/captains",
   defaultRepoRoots: ["/home/sam/Repositories"],
 };
 
+/** Folders that note how many terminals had been launched each time one is made. */
+function watchedFolders(terminals: FakeTerminals): { folders: FakeFolders; launchesAtEnsure: number[] } {
+  const folders = new FakeFolders();
+  const launchesAtEnsure: number[] = [];
+  folders.onEnsure = () => launchesAtEnsure.push(terminals.launched.length);
+  return { folders, launchesAtEnsure };
+}
+
 export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig } = {}): Fakes {
+  const config = options.config ?? TEST_CONFIG;
   const terminals = new FakeTerminals();
-  const harnesses = new FakeHarnesses(options.trust ?? null);
   const events = new FakeEventLog();
-  const worktrees = new FakeWorktrees();
+  const { folders, launchesAtEnsure } = watchedFolders(terminals);
+  const ports = {
+    terminals,
+    events,
+    folders,
+    harnesses: new FakeHarnesses(options.trust ?? null),
+    worktrees: new FakeWorktrees(),
+    configStore: new FakeConfigStore(config),
+    repos: new FakeRepos(),
+    github: new FakeGitHub(),
+  };
   const mcpContexts: LaunchContext[] = [];
   const eventsAtTrust: number[] = [];
   terminals.onAnswerTrust = () => eventsAtTrust.push(events.events.length);
-  const config = options.config ?? TEST_CONFIG;
-  const configStore = new FakeConfigStore(config);
-  const repos = new FakeRepos();
-  const github = new FakeGitHub();
-  const deps: Deps = {
-    config,
-    configStore,
-    repos,
-    github,
-    terminals,
-    harnesses,
-    events,
-    worktrees,
-    ...FIXED,
-    ids: countingIds(),
-    mcpFor: (context) => {
-      mcpContexts.push(context);
-      return { command: "node", args: ["brigade", "mcp"], env: { ROLE: context.role } };
-    },
+  const mcpFor = (context: LaunchContext) => {
+    mcpContexts.push(context);
+    return { command: "node", args: ["brigade", "mcp"], env: { ROLE: context.role } };
   };
-  return { deps, terminals, harnesses, events, worktrees, mcpContexts, eventsAtTrust, configStore, repos, github };
+  const deps: Deps = { config, ...ports, ...FIXED, ids: countingIds(), mcpFor };
+  return { deps, ...ports, mcpContexts, eventsAtTrust, launchesAtEnsure };
 }
 
 export const ctx = (over: Partial<AgentContext> & Pick<AgentContext, "role">): AgentContext => ({

@@ -14,9 +14,20 @@ export function projectNamed(deps: Deps, name: string): ProjectConfig {
   throw new BrigadeError(`No project "${name}". Projects: ${known}.`);
 }
 
-/** Starts the Coordinator unless one is running. Returns its address and whether it was already there. */
-export async function startCoordinator(deps: Deps): Promise<{ address: string; started: boolean }> {
+/**
+ * Starts the Coordinator unless one is running. Returns its address and whether it was already there. It continues
+ * the newest conversation in its folder, or starts a new one when `fresh` is set; a fresh start refuses while one runs.
+ */
+export async function startCoordinator(
+  deps: Deps,
+  options: { fresh?: boolean } = {},
+): Promise<{ address: string; started: boolean }> {
   const [running] = await findTerminals(deps, { role: "coordinator" });
+  if (running && options.fresh) {
+    throw new BrigadeError(
+      `A Coordinator is running in ${running.address}. Stop it with "hc kill ${running.address}", then run "brigade start --new" again.`,
+    );
+  }
   if (running) return { address: running.address, started: false };
   const spec = deps.config.roles.coordinator;
   const address = await launchAgent(
@@ -28,13 +39,17 @@ export async function startCoordinator(deps: Deps): Promise<{ address: string; s
       context: { role: "coordinator", project: null, task: null, title: null, parent: null },
       firstMessage: null,
       promptValues: { PROJECTS: deps.config.projects.map((p) => p.name).join(", ") || "none yet" },
+      resume: !options.fresh,
     },
     (terminal) => ({ kind: "agent_started", role: "coordinator", project: null, terminal, spec }),
   );
   return { address, started: true };
 }
 
-/** Starts a project's Captain in its repo, with `firstMessage` as its first input. */
+/**
+ * Starts a project's Captain with `firstMessage` as its first input. It runs in a folder of its own, so the newest
+ * conversation there is always its own to continue, and it reads the repo from there.
+ */
 async function startCaptain(
   deps: Deps,
   ctx: AgentContext,
@@ -42,12 +57,16 @@ async function startCaptain(
   firstMessage: string,
 ): Promise<void> {
   const spec = deps.config.roles.captain;
+  const folder = `${deps.captainsFolder}/${project.name}`;
+  await deps.folders.ensure(folder);
   await launchAgent(
     deps,
     {
       spec,
       name: terminalName.captain(project.name),
-      cwd: project.repo,
+      cwd: folder,
+      readDirs: [project.repo],
+      resume: true,
       context: { role: "captain", project: project.name, task: null, title: null, parent: ctx.terminal },
       firstMessage,
       promptValues: { PROJECT: project.name, REPO: project.repo, BASE_BRANCH: project.baseBranch },

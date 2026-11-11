@@ -23,12 +23,15 @@ const ROUTING_ONLY: Readonly<Record<Role, readonly string[]>> = {
  * for this session from a file named by `--brigade-mcp`. pi also loads the owner's own servers from
  * `~/.pi/agent/mcp.json`, a known gap (docs/decisions.md). pi has no permission prompts, so every level runs alike.
  * `--no-approve` ignores a repo's own pi extensions and settings: a cloned repo can't run code through them.
+ * To resume, `--continue` takes the newest session in this folder and starts a new one when there is none. pi needs
+ * no read folders: it has no read limits.
  */
 export async function preparePi(req: HarnessLaunchRequest, files: HarnessFiles): Promise<HarnessLaunch> {
   const promptFile = await writeAgentFile(files.agentDir, "system-prompt.md", req.systemPrompt);
   const mcpFile = await writeAgentFile(files.agentDir, "mcp.json", JSON.stringify(req.mcp, null, 2));
   const argv = [
     "pi",
+    ...(req.resume ? ["--continue"] : []),
     "--model",
     req.spec.model,
     "--thinking",

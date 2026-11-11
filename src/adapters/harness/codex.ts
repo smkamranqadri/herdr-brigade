@@ -40,11 +40,16 @@ function permissionFlags(role: Role, permissions: Permission, writableDirs: read
   return ["-a", approval, "-s", "workspace-write", ...writableDirs.flatMap((d) => ["--add-dir", d])];
 }
 
-/** Builds the `codex` command for one agent. Its MCP server and instructions go in as `-c` settings. */
+/**
+ * Builds the `codex` command for one agent. Its MCP server and instructions go in as `-c` settings. To resume, it runs
+ * `codex resume --last`, which takes the newest session in this folder and starts a new one when there is none.
+ * Codex needs no read folders: its read-only sandbox reads any folder.
+ */
 export function prepareCodex(req: HarnessLaunchRequest): Promise<HarnessLaunch> {
   const server = "mcp_servers.brigade";
   const argv = [
     "codex",
+    ...(req.resume ? ["resume", "--last"] : []),
     // hc's manual: Codex must run with --no-daemon, or its commands run outside hc.
     "--no-daemon",
     "-m",

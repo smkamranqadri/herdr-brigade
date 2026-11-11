@@ -190,3 +190,21 @@ Fixes: the Captain prompt routes every Coordinator request through `report`; new
 
 Real check (Claude, `claude-sonnet-5-5` low): `EXPECT_TASKS=0 scripts/e2e.sh claude "Ask the demo Captain which branch the demo repo is on, its latest commit, and what its README says. No worker is needed: the Captain can answer from the repo itself."` In 42 seconds the Captain called `repo_status`, read the README, and called `report`; the Coordinator received the report and passed it on. `brigade panel` opened the panel as a window, without the auto-tabs mod (screenshot), and closed it again.
 
+
+## 2026-11-11: resume, Claude (phase 3a)
+
+Run folder `run-resume-claude-20261111-134701`, every role on `claude-sonnet-5-5` low, driven by hand with `hc send` and `hc wait`.
+
+- **Coordinator resume:** told it "PELICAN", stopped it with `hc kill`, ran `brigade start`. The new terminal ran `claude --continue` and answered "PELICAN".
+- **Fallback, folder already trusted:** `--continue` found no session (`t1cw`), brigade removed that terminal and started a new one (`t1cx`).
+- **Fallback, new folder (bug found and fixed):** in a folder Claude had not trusted yet, Claude asks about trust first, then ends with "No conversation found to continue". `answerTrust` returned "answered" once the prompt was gone, so brigade reported a start for an agent that had ended (`t1cv`). Fix: after a trust answer, wait for the ready text or the no-session text. Re-checked live with the new Captain folder: `t1cz` ended with no session and was removed, and `t1d1` started new.
+- **Captain:** in `state/captains/demo`, it read the repo's `README.md` with no permission prompt in manual mode and reported "OTTER" and the README line. After `hc kill`, a new request started it with `claude --continue`. The request showed once on its screen, and it reported "OTTER".
+- **`--new`:** refused while the Coordinator ran, naming `hc kill t1cy`. After the stop, it started without `--continue`, and the Coordinator answered "NONE" when asked for the word.
+
+## 2026-11-11: resume, Codex and pi (phase 3a)
+
+Run folders `run-resume-codex-20261111-140252` (`gpt-6.1-terra` low) and `run-resume-pi-20261111-140427` (`openai/gpt-6.1-sol` low), every role on that harness.
+
+- **Codex:** the Coordinator ran `codex resume --last` from its first start, which began a new session in the empty folder. After `hc kill` and `brigade start` it answered "PELICAN". The Captain ran in `state/captains/demo`, read the repo's README and reported "OTTER" and the README line. After `hc kill`, a new request started it with `codex resume --last`. The request showed once, and it reported "OTTER". `~/.codex/config.toml` was unchanged.
+- **pi:** the same steps with `pi --continue`, and both answers were right. The pi Captain also saved "OTTER" as a project note. So the restart check asked it to answer without tools: the resumed screen showed the earlier request, the new request showed once, and it reported "OTTER".
+- pi dropped the Enter of text typed with a plain `hc send`. Brigade's own `send` already presses Enter again in that case, so this needed only a hand press in the test.

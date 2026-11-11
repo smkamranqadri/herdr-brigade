@@ -6,7 +6,7 @@ import { GitWorktrees } from "../adapters/git/gitWorktrees.ts";
 import { HarnessAdapters } from "../adapters/harness/harnesses.ts";
 import { HcTerminals, hcRunner } from "../adapters/hc/hcTerminals.ts";
 import { FilePrompts } from "../adapters/prompts/filePrompts.ts";
-import { randomIds, systemClock } from "../adapters/system/system.ts";
+import { localFolders, randomIds, systemClock } from "../adapters/system/system.ts";
 import type { BrigadeConfig } from "../domain/config.ts";
 import { FileConfigStore } from "../adapters/config/fileConfigStore.ts";
 import { GitRepos } from "../adapters/git/gitRepos.ts";
@@ -33,7 +33,9 @@ export function buildDeps(config: BrigadeConfig, paths: Paths): Deps {
     clock: systemClock,
     ids: randomIds,
     mcpFor: (context) => ({ command: paths.node, args: [paths.cli, "mcp"], env: mcpEnv(context, paths) }),
+    folders: localFolders,
     coordinatorFolder: path.join(paths.stateDir, "coordinator"),
+    captainsFolder: path.join(paths.stateDir, "captains"),
   };
 }
 

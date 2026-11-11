@@ -68,6 +68,13 @@ export function trustKey(screen: string, trust: TrustPrompt): "enter" | "down" {
   return selected?.includes(trust.yes) ? "enter" : "down";
 }
 
+/** What a starting agent's screen shows: no session to resume, the trust prompt, the ready text, or none yet. */
+function startScreen(screen: string, trust: TrustPrompt): "no_session" | "prompt" | "ready" | "starting" {
+  if (trust.noSession !== undefined && screen.includes(trust.noSession)) return "no_session";
+  if (screen.includes(trust.text)) return "prompt";
+  return trust.ready.some((r) => screen.includes(r)) ? "ready" : "starting";
+}
+
 /**
  * Whether the input box holds exactly this text and nothing else. The box is what lies between the screen's last two
  * rules. Spaces and line breaks are ignored, since the box wraps. With no box found, or any other text in it (such
@@ -115,7 +122,9 @@ export class HcTerminals implements Terminals {
   /**
    * Answers a trust prompt one checked key at a time: Enter when the cursor is on "yes", else Down. A press the
    * program drops (it can draw the prompt before it reads keys) is simply repeated. Answered means the prompt is
-   * gone; ready means the ready text held for READY_STABLE_MS with no prompt.
+   * gone and the ready text shows; ready means the ready text held for READY_STABLE_MS with no prompt; no_session
+   * means the program printed that it found no session to resume. Claude Code asks about trust before it looks for
+   * a session, so a gone prompt alone is not enough: it may still end with no session.
    */
   async answerTrust(address: string, trust: TrustPrompt): Promise<TrustOutcome> {
     const until = this.now() + TRUST_WAIT_MS;
@@ -123,18 +132,27 @@ export class HcTerminals implements Terminals {
     let readySince: number | null = null;
     while (this.now() < until) {
       const screen = await this.run(["read", address, "--lines", "0"]);
-      if (screen.includes(trust.text)) {
+      const seen = startScreen(screen, trust);
+      if (seen === "no_session") return "no_session";
+      if (seen === "prompt") {
         await this.run(["keys", address, trustKey(screen, trust)]);
         [pressed, readySince] = [true, null];
         await this.sleep(TRUST_KEY_SETTLE_MS);
         continue;
       }
-      if (pressed) return "answered";
-      readySince = trust.ready.some((r) => screen.includes(r)) ? (readySince ?? this.now()) : null;
+      if (pressed && seen === "ready") return "answered";
+      // Once pressed, a ready screen has already returned above.
+      readySince = seen === "ready" ? (readySince ?? this.now()) : null;
       if (readySince !== null && this.now() - readySince >= READY_STABLE_MS) return "ready";
       await this.sleep(TRUST_POLL_MS);
     }
     return "timeout";
+  }
+
+  /** hc kill answers for a terminal that already ended too; hc rm then frees its name. */
+  async remove(address: string): Promise<void> {
+    await this.run(["kill", address]);
+    await this.run(["rm", address]);
   }
 
   /**

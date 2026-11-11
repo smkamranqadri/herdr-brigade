@@ -30,15 +30,20 @@ export interface TrustPrompt {
   readonly yes: string;
   /** Text that shows the agent is ready, so there is no prompt to answer. */
   readonly ready: readonly string[];
+  /** Text the program prints before it ends when asked to resume and it has no session to resume. */
+  readonly noSession?: string;
 }
 
-export type TrustOutcome = "answered" | "ready" | "timeout";
+/** no_session: the program found no session to resume (TrustPrompt.noSession) and ended. */
+export type TrustOutcome = "answered" | "ready" | "timeout" | "no_session";
 
 /** Port to herdr-core (hc). */
 export interface Terminals {
   launch(req: TerminalLaunch): Promise<string>;
-  /** Answers the trust prompt if it appears, or sees the agent ready without one, or gives up. */
+  /** Answers the trust prompt if it appears, or sees the agent ready without one, or sees it find no session, or gives up. */
   answerTrust(address: string, trust: TrustPrompt): Promise<TrustOutcome>;
+  /** Ends the terminal if it still runs and removes it, so its name is free. */
+  remove(address: string): Promise<void>;
   /** Types text into the terminal and presses Enter, waiting while a just-started agent settles. */
   send(address: string, text: string): Promise<void>;
   /** Live terminals that carry all of these labels. */
@@ -76,6 +81,10 @@ export interface HarnessLaunchRequest {
   readonly mcp: McpCommand;
   /** Folders outside its own that a sandboxed agent must be able to write, such as the repo's git folder. */
   readonly writableDirs: readonly string[];
+  /** Folders outside its own that the agent reads, such as a Captain's repo. */
+  readonly readDirs: readonly string[];
+  /** Continue the newest session in the agent's folder instead of starting a new one. */
+  readonly resume: boolean;
 }
 
 export interface HarnessLaunch {
@@ -221,6 +230,12 @@ export interface Clock {
   wait(ms: number): Promise<void>;
 }
 
+/** Port to brigade's own folders on disk. */
+export interface Folders {
+  /** Makes the folder, readable by the owner only, if it is missing. */
+  ensure(folder: string): Promise<void>;
+}
+
 export interface Ids {
   taskId(): string;
   noteId(): string;
@@ -252,6 +267,9 @@ export interface Deps {
   readonly clock: Clock;
   readonly ids: Ids;
   readonly mcpFor: (context: LaunchContext) => McpCommand;
+  readonly folders: Folders;
   /** Where the Coordinator runs. */
   readonly coordinatorFolder: string;
+  /** Each Captain runs in its own folder here, named after its project. */
+  readonly captainsFolder: string;
 }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The Coordinator and the Captains keep their conversations. After a stop or a reboot, each start continues the agent's last conversation, on Claude Code, Codex or pi. `brigade start --new` starts the Coordinator in a new one. Each Captain now runs in a folder of its own and reads its repo from there, so its first start after this update is a new conversation.
 - The Brigade panel can sit in a column of its own, so it stays on screen in every space. An icon, or the `brigade.toggle` key command, folds it to a rail with the Coordinator, each project and its open tasks, as icons you can click (`docs/herdr-app.md`).
 
 ## 1.2.0 (2026-11-10)

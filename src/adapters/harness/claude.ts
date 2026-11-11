@@ -8,6 +8,8 @@ const CLAUDE_TRUST: TrustPrompt = {
   cursor: "❯",
   yes: "Yes, I trust this folder",
   ready: ["? for shortcuts", "accept edits on", "manual mode on", "auto mode on", "bypass permissions on"],
+  // Claude Code 2.1.322 prints this and ends when --continue finds no session in the folder.
+  noSession: "No conversation found to continue",
 };
 
 /** Coordinators and Captains route work, so they can never edit or run anything, whatever their permissions. */
@@ -41,11 +43,13 @@ export async function prepareClaude(req: HarnessLaunchRequest, files: HarnessFil
   // --mcp-config and --allowedTools take several values, so single-value flags sit between them and the first message.
   const argv = [
     "claude",
+    ...(req.resume ? ["--continue"] : []),
     ...(OWN_MCP_SERVERS.has(req.role) ? [] : ["--strict-mcp-config"]),
     "--mcp-config",
     mcpFile,
     "--allowedTools",
     "mcp__brigade",
+    ...req.readDirs.flatMap((d) => ["--add-dir", d]),
     ...roleFlags(req.role, req.spec.permissions),
     "--append-system-prompt-file",
     promptFile,

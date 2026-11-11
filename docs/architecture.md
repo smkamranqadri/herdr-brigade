@@ -18,7 +18,7 @@ Outside `src/`:
 ## How a request flows
 
 1. You type in the Coordinator's terminal.
-2. The Coordinator calls `send_to_captain`. Brigade starts that project's Captain if it isn't running, or types the message into it.
+2. The Coordinator calls `send_to_captain`. Brigade starts that project's Captain if it isn't running, or types the message into it. A Captain runs in a folder of its own and reads the repo from there.
 3. The Captain calls `create_task`. Brigade makes a git worktree and starts a worker there, on the harness chosen for it.
 4. The worker calls `finish` or `ask_user`. Brigade records the event and types a report into the Captain.
 5. The Captain calls `report`. Brigade types it into the Coordinator.

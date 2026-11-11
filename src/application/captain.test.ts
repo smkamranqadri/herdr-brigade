@@ -27,6 +27,7 @@ describe("createTask", () => {
     });
     expect(f.harnesses.requests[0]?.firstMessage).toBe("Fix it.");
     expect(f.harnesses.requests[0]?.writableDirs).toEqual(["/repos/shop/.git"]);
+    expect(f.harnesses.requests[0]).toMatchObject({ resume: false, readDirs: [] });
     expect(f.mcpContexts).toEqual([
       { role: "worker", project: "shop", task: "task-000001", title: "Fix the login bug", parent: "t3" },
     ]);

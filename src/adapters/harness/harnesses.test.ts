@@ -27,6 +27,8 @@ const request = (harness: Harness, over: Partial<HarnessLaunchRequest> = {}): Ha
     env: { BRIGADE_ROLE: "worker", BRIGADE_TASK: "task-1" },
   },
   writableDirs: ["/repos/shop/.git"],
+  readDirs: [],
+  resume: false,
   ...over,
 });
 
@@ -41,6 +43,13 @@ function delivered(launch: HarnessLaunch): string {
   const files = launch.argv.filter((a) => a.startsWith("/") && existsSync(a) && a !== PI_EXTENSION);
   return [...launch.argv, ...files.map((f) => readFileSync(f, "utf8"))].join("\n");
 }
+
+/** How each harness continues the newest session in its folder. */
+const RESUME_FLAGS: Readonly<Record<Harness, readonly string[]>> = {
+  claude: ["--continue"],
+  codex: ["resume", "--last"],
+  pi: ["--continue"],
+};
 
 /** How each harness keeps the Coordinator and Captains from changing anything. */
 const READ_ONLY_MARK: Readonly<Record<Harness, string>> = {
@@ -82,6 +91,13 @@ describe.each(["claude", "codex", "pi"] as const)("harness contract: %s", (harne
     },
   );
 
+  it("continues the newest session in its folder only when asked to resume", async () => {
+    const resumed = (await prepare(request(harness, { resume: true }))).launch.argv;
+    expect(resumed.slice(1, 1 + RESUME_FLAGS[harness].length)).toEqual(RESUME_FLAGS[harness]);
+    const fresh = (await prepare(request(harness))).launch.argv;
+    for (const flag of RESUME_FLAGS[harness]) expect(fresh).not.toContain(flag);
+  });
+
   it("describes its trust prompt fully, or has none", async () => {
     const { trust } = (await prepare(request(harness))).launch;
     if (trust === null) return;
@@ -120,6 +136,7 @@ describe("Claude Code", () => {
       cursor: "❯",
       yes: "Yes, I trust this folder",
       ready: ["? for shortcuts", "accept edits on", "manual mode on", "auto mode on", "bypass permissions on"],
+      noSession: "No conversation found to continue",
     });
     expect(JSON.parse(await readFile(path.join(agentDir, "mcp.json"), "utf8"))).toEqual({
       mcpServers: {
@@ -132,6 +149,14 @@ describe("Claude Code", () => {
       },
     });
     expect((await stat(path.join(agentDir, "mcp.json"))).mode & 0o777).toBe(0o600);
+  });
+
+  it("lets the agent read each read folder with one --add-dir, and adds none without them", async () => {
+    const { argv } = (await prepare(request("claude", { role: "captain", readDirs: ["/repos/shop", "/repos/b"] })))
+      .launch;
+    expect(argv.filter((a, i) => argv[i - 1] === "--add-dir")).toEqual(["/repos/shop", "/repos/b"]);
+    expect(argv.filter((a) => a === "--add-dir")).toHaveLength(2);
+    expect((await prepare(request("claude"))).launch.argv).not.toContain("--add-dir");
   });
 
   it("loads the owner's own MCP servers for the Coordinator only; Captains and workers get brigade's alone", async () => {
@@ -204,6 +229,11 @@ describe("Codex", () => {
     const { argv } = (await prepare(request("codex", { role, spec }))).launch;
     expect(argv.slice(6, 6 + flags.length)).toEqual(flags);
     expect(argv).toContain('model_reasoning_effort="xhigh"');
+  });
+
+  it("never turns a read folder into an --add-dir, which would let Codex write there", async () => {
+    const req = request("codex", { role: "captain", writableDirs: [], readDirs: ["/repos/shop"] });
+    expect((await prepare(req)).launch.argv).not.toContain("/repos/shop");
   });
 
   it("writes TOML strings with quotes, newlines and DEL escaped", () => {
