@@ -17,6 +17,7 @@ The latest release is v1.2.0 (2026-11-10). `CHANGELOG.md` lists each release.
 | `herdr_agents` | The Coordinator lists every live terminal in Herdr. | 1.1.0 |
 | Captain answers | A Captain answers every Coordinator request through `report`. | 1.1.0 |
 | Owner's MCP servers | A Claude Coordinator also loads the owner's own MCP servers, such as a task app. Claude Captains and workers get brigade's server only. | 1.2.0 |
+| Panel column and rail | The panel can sit in its own layout column, so it stays in every space. An icon or the `brigade.toggle` key folds it to a rail of clickable agent icons (`docs/herdr-app.md`). | Unreleased (`8082856`) |
 
 ## Known defects
 
