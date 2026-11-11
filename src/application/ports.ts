@@ -59,6 +59,20 @@ export interface Terminals {
   all(): Promise<HerdrTerminal[]>;
 }
 
+/**
+ * Where the owner sees agents: a multiplexer's spaces and tabs. herdr-app is the first. Brigade starts agents through
+ * Terminals; the Workspace only shows them.
+ */
+export interface Workspace {
+  /** Fails with a message for the owner when the window is not running. */
+  check(): Promise<void>;
+  /**
+   * Shows the terminal's tab. A terminal with no tab gets one in the Brigade space, which is made when it is missing.
+   * With first, a tab in the Brigade space moves to position 1; a tab in another space is shown and not moved.
+   */
+  open(address: string, options: { readonly first: boolean }): Promise<void>;
+}
+
 /** One live terminal as Herdr shows it. */
 export interface HerdrTerminal {
   readonly address: string;
