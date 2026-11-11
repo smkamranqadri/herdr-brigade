@@ -67,7 +67,7 @@ With core keep on, hc puts a shell where an agent was lost to a reboot. The owne
   - `openAgent(deps, workspace, address)` opens a Coordinator or a Captain, and refuses any other terminal.
   - Tests against fakes cover each branch of the flow.
 - [x] **T5 CLI.** `brigade start` calls `openBrigade`. It no longer peeks, and it no longer falls back to `hc attach`. A new `brigade open <address>` calls `openAgent`. `src/entrypoints/bootstrap.ts` builds every `HerdrApp` (Workspace, panel and mod check), so `cli.ts` builds no adapter (guide A2).
-- [ ] **T6 Panel.** A click on a Coordinator or Captain row (and rail cell) in `mod/main.js` runs `brigade open <address>`, the same way the Start button runs `brigade start`. Worker rows still peek. `installMod` writes the open command into `config.js`. The owner runs `brigade mod install` again.
+- [x] **T6 Panel.** A click on a Coordinator or Captain row (and rail cell) in `mod/main.js` runs `brigade open <address>`, the same way the Start button runs `brigade start`. Worker rows still peek. `installMod` writes the open command into `config.js`. The owner runs `brigade mod install` again.
 - [ ] **T7 Docs.** `README.md`, `CHANGELOG.md` (Unreleased, with the `hc kill` step for old Captains), `docs/herdr-app.md` and `docs/decisions.md` (Captains end with the Coordinator, and why).
 
 ## Out of scope

@@ -1,12 +1,17 @@
 // The Brigade panel for herdr-app: the Coordinator, each project's Captain and tasks with live status, and the latest
-// events. A click on a row shows that agent's terminal over your tab (peek), where you chat with it. It only shows; it changes nothing.
+// events. A click on the Coordinator or a Captain opens its tab in the Brigade space (`brigade open`); a click on a
+// task shows its worker over your tab (peek). Either way you chat with the agent there. It changes nothing else.
 // In its own layout column, an icon (or the "brigade.toggle" key) folds it to a rail, as the left sidebar does.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, layout, nextCommand, terminals, theme, run, readTextFile, setShared, shared, watchFolder } from "herdr";
-import { CONFIG_FILE, START, STATE_DIR } from "./config.js";
+// A namespace import: a config.js written before `OPEN` existed still loads, and its clicks peek as before.
+import * as config from "./config.js";
 import { PANEL_ID, buildModel, configProjects, isRail, panelWidth, parseEvents, toggledWidth } from "./model.js";
 
+const { CONFIG_FILE, START, STATE_DIR } = config;
+/** `brigade open` for this same config and state, without the address; null in a config.js from before it. */
+const OPEN = config.OPEN ?? null;
 const EVENTS_FILE = `${STATE_DIR}/events.jsonl`;
 /** The column's width before it folded, so unfolding brings it back. */
 const WIDTH_KEY = "brigade.width";
@@ -14,6 +19,8 @@ const WIDTH_KEY = "brigade.width";
 const RETRY_MS = 5000;
 /** brigade start waits up to 30 s for a trust prompt, then up to 10 s for herdr-app to see the terminal. */
 const START_TIMEOUT_MS = 90_000;
+/** brigade open waits up to 10 s for herdr-app to see the terminal, then up to 10 s for its tab. */
+const OPEN_TIMEOUT_MS = 30_000;
 
 const localTime = (iso) => new Date(iso).toTimeString().slice(0, 5);
 
@@ -24,6 +31,8 @@ export default class Brigade extends View {
     /** While the Start button's `brigade start` runs; then its error, if it failed. */
     this.starting = false;
     this.startError = null;
+    /** Why the last `brigade open` failed, or null. */
+    this.openError = null;
     this.watch(cx);
     this.listen(cx);
   }
@@ -103,6 +112,7 @@ export default class Brigade extends View {
    */
   rail(m, t) {
     const peek = (address) => (address === null ? null : () => run("terminal.peek", { terminal: address }));
+    const open = (address) => (address === null ? null : (_e, cx) => this.openTab(address, cx));
     const coordinator =
       m.coordinator === null
         ? this.railCell(
@@ -121,7 +131,7 @@ export default class Brigade extends View {
             m.coordinator.status,
             `Coordinator · ${m.coordinator.status ?? "starting"}`,
             t,
-            peek(m.coordinator.address),
+            open(m.coordinator.address),
           );
     const project = (p) => {
       const open = p.tasks.filter((task) => task.state !== "finished");
@@ -135,7 +145,7 @@ export default class Brigade extends View {
             p.captain?.status,
             `${p.name} · ${p.captain ? `Captain ${p.captain.status ?? "starting"}` : "no Captain"} · ${open.length} open ${open.length === 1 ? "task" : "tasks"}`,
             t,
-            peek(p.captain?.address ?? null),
+            open(p.captain?.address ?? null),
           ),
         )
         .children(
@@ -199,7 +209,7 @@ export default class Brigade extends View {
       .rounded(6)
       .items_center()
       .hover((s) => s.bg(t.hover))
-      .on_click(() => run("terminal.peek", { terminal: agent.address }))
+      .on_click((_e, cx) => this.openTab(agent.address, cx))
       .child(this.dot(agent.status, t))
       .child(div().flex_1().truncate().child(label))
       .child(
@@ -261,7 +271,27 @@ export default class Brigade extends View {
       );
   }
 
-  /** Runs `brigade start`, which starts the Coordinator and shows it over the tab. Ignores clicks while it runs. */
+  /**
+   * Runs `brigade open <address>`, which opens the agent's tab in the Brigade space. If it fails, or config.js is from
+   * before `OPEN`, the agent is shown over the tab (peek) instead, and the panel says why.
+   */
+  openTab(address, cx) {
+    if (OPEN === null) return run("terminal.peek", { terminal: address });
+    cx.spawn(async (cx) => {
+      let error = null;
+      try {
+        const r = await exec(OPEN[0], [...OPEN.slice(1), address], { timeout: OPEN_TIMEOUT_MS });
+        if (r.code !== 0) error = (r.stderr || r.stdout).trim().split("\n").pop() || `exit ${r.code}`;
+      } catch (err) {
+        error = String(err);
+      }
+      this.openError = error;
+      if (error !== null) run("terminal.peek", { terminal: address });
+      cx.notify();
+    });
+  }
+
+  /** Runs `brigade start`, which opens the Brigade space with the Coordinator in it. Ignores clicks while it runs. */
   start(cx) {
     if (this.starting) return;
     this.starting = true;
@@ -343,6 +373,9 @@ export default class Brigade extends View {
               )
               .child(div().text_color(t.dim).child(`${m.counts.finished} finished`)),
           ),
+      )
+      .when(this.openError !== null, (el) =>
+        el.child(div().text_size(11.5).text_color(t.blocked).child(`Couldn't open its tab: ${this.openError}`)),
       )
       .when(m.coordinator === null, (el) => el.child(this.startButton(t)))
       .when(m.coordinator !== null, (el) => el.child(this.agentLine("coordinator", "Coordinator", m.coordinator, t)))

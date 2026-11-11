@@ -26,11 +26,12 @@ describe("installMod", () => {
     for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg", "model.test.js"])
       await writeFile(path.join(source, f), f);
     const home = await mkdtemp(path.join(tmpdir(), "brigade-herdr-home-"));
-    const start = ["env", "BRIGADE_STATE=/s", "/bin/node", "/app/cli.ts", "start"];
+    const brigade = ["env", "BRIGADE_STATE=/s", "/bin/node", "/app/cli.ts"];
     const target = await installMod(source, home, {
       stateDir: '/state/with "quotes"',
       configFile: "/c/config.json",
-      start,
+      start: [...brigade, "start"],
+      open: [...brigade, "open"],
     });
     expect(target).toBe(path.join(home, "mods", "brigade"));
     expect((await readdir(target)).sort()).toEqual([
@@ -48,6 +49,8 @@ describe("installMod", () => {
         'export const CONFIG_FILE = "/c/config.json";',
         "// The panel's Start button runs this: `brigade start` for this same config and state.",
         'export const START = ["env","BRIGADE_STATE=/s","/bin/node","/app/cli.ts","start"];',
+        "// A click on the Coordinator or a Captain runs this with the terminal's address: `brigade open <address>`.",
+        'export const OPEN = ["env","BRIGADE_STATE=/s","/bin/node","/app/cli.ts","open"];',
         "",
       ].join("\n"),
     );

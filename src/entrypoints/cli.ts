@@ -75,20 +75,20 @@ async function panel(paths: Paths): Promise<string> {
 }
 
 async function modInstall(paths: Paths): Promise<string> {
-  // The mod can't set environment variables, so the Start button runs env with them: it starts this same brigade.
-  const start = [
+  // The mod can't set environment variables, so it runs env with them: it starts and opens this same brigade.
+  const brigade = [
     "env",
     `BRIGADE_CONFIG=${paths.configFile}`,
     `BRIGADE_STATE=${paths.stateDir}`,
     `BRIGADE_WORKTREES=${paths.worktreesRoot}`,
     paths.node,
     paths.cli,
-    "start",
   ];
   const target = await installMod(paths.modSource, paths.herdrAppHome, {
     stateDir: paths.stateDir,
     configFile: paths.configFile,
-    start,
+    start: [...brigade, "start"],
+    open: [...brigade, "open"],
   });
   const check = await buildHerdrApp(paths).check(target);
   return [
