@@ -86,6 +86,16 @@ Each start of the Coordinator or a Captain continues the newest session in its o
 - **No session.** `claude --continue` prints "No conversation found to continue" and ends; brigade removes that terminal and starts once more with a new session. pi and Codex start new by themselves.
 - **Rejected:** session ids stored by brigade (no way to get Codex's), and reading Codex's private session files.
 
+## The Brigade space: tabs, Captains end with the Coordinator, core keep off (2026-11-11, owner's choice)
+
+`brigade start` opens a herdr-app space named Brigade, in the Coordinator's folder, with the Coordinator in tab 1. A Captain gets a tab on `brigade start` or when the owner clicks it; it starts in the background. Facts from the probe are in `docs/herdr-app.md`.
+
+- **Tabs through `terminal.keep`.** Brigade starts every agent through hc, with its name, labels, parent and tool limits. herdr-app's `space.new`, `tab.new` and `terminal.open` start a program of their own, so only `terminal.keep` can give brigade's terminal a tab.
+- **Captains end with the Coordinator.** They start without hc's `--outlive-parent`, so closing the space or the Coordinator's tab stops them too, and they resume next time. Workers keep the flag: a worker in the middle of a task would lose its work.
+- **Core keep off.** `terminal.keep` turns hc's core keep on. With it on, a reboot leaves a shell in place of the agent, and a tool such as the owner's revive mod can resume the agent there without brigade's tool limits or MCP server. So brigade runs `hc keep <t> --off` after each tab it opens, also when opening fails, and on every brigade terminal at the end of `brigade start`.
+- **Not known:** what herdr-app does with kept terminals after a window restart or a reboot. The owner's window must not restart for a probe.
+- **Rejected:** keeping the peek (Esc in a peek interrupts the agent), and marking brigade terminals for the revive mod to skip (it would tie brigade to one owner's mod).
+
 ## Gaps against the guide, on purpose (guide P8)
 
 - **CI (S7, Q3):** none yet; there is no remote. Add it when the repo gets one.

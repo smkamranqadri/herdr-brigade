@@ -5,8 +5,8 @@ Ports and adapters (guide part 3). Dependencies point inward. `npm run deps` enf
 | Layer | Holds | May import |
 | --- | --- | --- |
 | `src/domain/` | Roles, harnesses, tasks, events, config types. No I/O. | `domain` only |
-| `src/application/` | Use cases, and the ports they need: `Terminals` (hc), `EventLog`, `Worktrees`, `Clock`. | `domain`, `application` |
-| `src/adapters/<name>/` | One folder per outside system: `hc`, `harness`, `eventlog`, `git`, `mcp`. Each port has a fake. | `domain`, `application`; never another adapter |
+| `src/application/` | Use cases, and the ports they need: `Terminals` (hc), `Workspace` (herdr-app's spaces and tabs), `EventLog`, `Worktrees`, `Clock`. | `domain`, `application` |
+| `src/adapters/<name>/` | One folder per outside system: `hc`, `herdrApp`, `harness`, `eventlog`, `git`, `mcp`. Each port has a fake. | `domain`, `application`; never another adapter |
 | `src/entrypoints/` | `cli.ts` (the `brigade` command) and `bootstrap.ts`, the only place that builds adapters. | Everything |
 
 Outside `src/`:

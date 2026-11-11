@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `brigade start` opens a space named Brigade in herdr-app, with the Coordinator in tab 1 and a tab for each running Captain, instead of showing the Coordinator over your tab. In the panel, a click on the Coordinator or a Captain opens its tab (`brigade open <address>`); a task still shows its worker over your tab. Run `brigade mod install` again to get the new clicks.
+- A Captain now ends when the Coordinator ends, so closing the Brigade space or the Coordinator's tab stops both. Workers keep running. Captains that run now keep the old behavior until they restart: stop each one once with `hc kill <address>`.
+- Brigade turns hc's core keep off on its terminals. herdr-app turns it on when it gives a terminal a tab, and after a reboot it would leave a shell where tools can restart an agent without brigade's limits.
 - The Coordinator and the Captains keep their conversations. After a stop or a reboot, each start continues the agent's last conversation, on Claude Code, Codex or pi. `brigade start --new` starts the Coordinator in a new one. Each Captain now runs in a folder of its own and reads its repo from there, so its first start after this update is a new conversation.
 - The Brigade panel can sit in a column of its own, so it stays on screen in every space. An icon, or the `brigade.toggle` key command, folds it to a rail with the Coordinator, each project and its open tasks, as icons you can click (`docs/herdr-app.md`).
 

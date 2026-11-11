@@ -45,10 +45,11 @@ npm run brigade -- mod install   # installs the Brigade panel into herdr-app
 
 ### First steps
 
-1. Start the brigade: click **Start brigade** in the panel, or run `npm run brigade -- start`. The Coordinator opens over your current tab. After a stop or a reboot, it continues its last conversation.
+1. Start the brigade: click **Start brigade** in the panel, or run `npm run brigade -- start`. herdr-app shows a space named Brigade, with the Coordinator in tab 1 and a tab for each running Captain. After a stop or a reboot, the Coordinator continues its last conversation.
 2. Add a project by chat: *"add my repo shop-site as a project"*. Brigade looks for the repo under `~/Repositories` (set `repoRoots` to change that). If the repo's `origin` is on GitHub, that repo is pinned, and pull requests go only there.
 3. Ask for work: *"in shop-site, add a dark mode toggle and open a pull request"*. The Captain starts a worker and reports back when it finishes or needs you.
-4. Click any row in the panel to open that agent over your tab and talk to it. **↗ keep** makes it a tab.
+4. In the panel, click the Coordinator or a Captain to open its tab. Click a task to show its worker over your tab and talk to it.
+5. To stop, close the Brigade space or the Coordinator's tab. The Coordinator and its Captains end; workers keep running. The next `start` continues the same conversations.
 
 Project notes are lasting preferences, such as *"remember for shop-site: designs use little text"*. Every new worker of that project starts with them. Workers can suggest notes; the Captain accepts, merges or rejects each one.
 
@@ -57,7 +58,8 @@ Project notes are lasting preferences, such as *"remember for shop-site: designs
 | Command | What it does |
 | --- | --- |
 | `npm run brigade -- init` | Write a starter config (never overwrites one). |
-| `npm run brigade -- start` | Start the Coordinator, or show it if it is running. It continues its last conversation; add `--new` for a new one. |
+| `npm run brigade -- start` | Open the Brigade space: the Coordinator in tab 1 (started if it isn't running) and a tab for each running Captain. The Coordinator continues its last conversation; add `--new` for a new one. |
+| `npm run brigade -- open <t>` | Open the tab of the Coordinator or a Captain in terminal `t`. The panel runs this when you click one. |
 | `npm run brigade -- status` | List the brigade's agents and tasks. |
 | `npm run brigade -- panel` | Open or close the Brigade panel as a window. |
 | `npm run brigade -- mod install` | Install or update the panel in herdr-app. |

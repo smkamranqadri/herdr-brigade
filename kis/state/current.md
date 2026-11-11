@@ -1,16 +1,17 @@
 # Current state
 
-Stamp: main 79f3e77 53628cc7964f
+Stamp: main f3de091 be44aac8a90a
 
-- Branch: `main`, in the repo root. No other worktrees. Ten commits are not pushed yet.
-- Task: phase 3b, the Brigade space (`kis/intent/plan-phase-3b.md`, reviewed twice). T0 to T6 are done; T6 is not committed yet. Phase 3a is done (`da84d99`, unreleased).
+- Branch: `main`, in the repo root. No other worktrees. Eleven commits are not pushed yet.
+- Task: phase 3b, the Brigade space (`kis/intent/plan-phase-3b.md`, reviewed twice). T0 to T7 are done; T7 is not committed yet. The live acceptance checks are left. Phase 3a is done (`da84d99`, unreleased).
 - Blocker: none. No test agents are running.
-- Next: 3b T7, the docs. Then the live checks: the owner runs `brigade mod install` again (it writes to `~/.config/herdr-app`) and approves the model.
+- Next: the 3b live checks 1 to 7, in an isolated run (`~/.local/state/herdr-brigade-e2e`), after the owner approves the model. Then the owner runs `brigade mod install` again and looks at the panel.
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 
 ## Proof
 
+- 3b T7 on 2026-11-11: README, CHANGELOG, `docs/decisions.md`, `docs/architecture.md` and `docs/herdr-app.md` updated; no stale peek claims left (grep). `npm run gate` passed (287 tests).
 - 3b T6 on 2026-11-11: `npm run gate` passed (287 tests). `herdr-app check` passed on scratch copies of the mod with a new `config.js` and with one from before `OPEN`; a named import of `OPEN` failed that check, so the namespace import is needed. A mutation of the `OPEN` line failed the `installMod` test. The panel has not been seen in the live window yet.
 - 3b T5 on 2026-11-11: `npm run gate` passed (287 tests, 97.99% of statements, suppressions 9, 0 vulnerabilities). The CLI ran by hand: the usage text, `open` with no address, `open t999` (refused), and `start`, `open` and `panel` with herdr-app off PATH (a clear message; `start` started no terminal). 2 mutations of the keep retry each failed a named test. `brigade start` has not run against the live window yet.
 - 3b T4 on 2026-11-11: `npm run gate` passed (288 tests, 97.99% of statements, suppressions 9, 0 vulnerabilities). 12 mutations of `openBrigade` and `openAgent` (keep off after each open and after a failed one, the sweep after a failure and past a failure, one line per failure, the hc and window checks, the refusal, which tab goes first and which is shown last) each failed a named test; each file was restored byte for byte.
