@@ -64,29 +64,20 @@ async function untilSeen(c: Clocked, args: readonly string[]): Promise<string> {
 }
 
 export class HerdrApp {
-  private readonly c: Clocked;
+  private readonly run: HerdrAppRunner;
 
-  constructor(run: HerdrAppRunner, options: HerdrAppOptions = {}) {
-    this.c = clocked(run, options);
-  }
-
-  /**
-   * Shows the agent's terminal over the owner's tab (herdr-app's peek, with "keep" to make it a tab), so the owner can
-   * type to it. agent.focus can't: brigade's agents run without a pane, so it has nothing to switch to. Waits while
-   * herdr-app catches up with a new terminal.
-   */
-  async show(address: string): Promise<void> {
-    await untilSeen(this.c, ["do", "terminal.peek", "--terminal", address]);
+  constructor(run: HerdrAppRunner) {
+    this.run = run;
   }
 
   /** Opens (or closes) the Brigade panel as a window. */
   async openPanel(): Promise<void> {
-    await this.c.run(["do", "mod.open", "--name", MOD_NAME]);
+    await this.run(["do", "mod.open", "--name", MOD_NAME]);
   }
 
   /** Loads the mod once and renders it; fails with herdr-app's exact error. */
   async check(modDir: string): Promise<string> {
-    return (await this.c.run(["check", modDir])).trim();
+    return (await this.run(["check", modDir])).trim();
   }
 }
 

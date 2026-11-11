@@ -5,50 +5,18 @@ import { describe, expect, it } from "vitest";
 import { HerdrApp, HerdrAppWorkspace, installMod } from "./herdrApp.ts";
 
 describe("HerdrApp", () => {
-  it("shows an agent over the tab (peek), toggles the panel and checks a mod with herdr-app's own commands", async () => {
+  it("toggles the panel and checks a mod with herdr-app's own commands", async () => {
     const calls: string[][] = [];
     const app = new HerdrApp((args) => {
       calls.push([...args]);
       return Promise.resolve(args[0] === "check" ? "check passed: /m\n" : '{"ok":true}');
     });
-    await app.show("t7");
     await app.openPanel();
     expect(await app.check("/m")).toBe("check passed: /m");
     expect(calls).toEqual([
-      ["do", "terminal.peek", "--terminal", "t7"],
       ["do", "mod.open", "--name", "brigade"],
       ["check", "/m"],
     ]);
-  });
-});
-
-describe("HerdrApp.show", () => {
-  const scripted = (replies: string[]) => {
-    const calls: string[][] = [];
-    let clock = 0;
-    const run = (args: readonly string[]) => {
-      calls.push([...args]);
-      const reply = replies.length > 1 ? replies.shift() : replies[0];
-      return reply?.startsWith("ERR ") ? Promise.reject(new Error(reply.slice(4))) : Promise.resolve(reply ?? "");
-    };
-    const app = new HerdrApp(run, { sleep: (ms) => ((clock += ms), Promise.resolve()), now: () => clock });
-    return { app, calls };
-  };
-  const notYet = 'ERR herdr-app do terminal.peek failed: { "error": "no running terminal \\"t7\\"" }';
-
-  it("retries while herdr-app hasn't seen the new terminal yet", async () => {
-    const { app, calls } = scripted([notYet, notYet, '{"ok":true}']);
-    await app.show("t7");
-    expect(calls).toHaveLength(3);
-  });
-
-  it("fails at once on any other error, and after 10 seconds of not seeing the terminal", async () => {
-    await expect(scripted(["ERR herdr-app do terminal.peek failed: no window"]).app.show("t7")).rejects.toThrow(
-      "no window",
-    );
-    const slow = scripted([notYet]);
-    await expect(slow.app.show("t7")).rejects.toThrow("no running terminal");
-    expect(slow.calls).toHaveLength(21);
   });
 });
 
@@ -248,6 +216,17 @@ describe("HerdrAppWorkspace.open", () => {
     const { ws, calls } = workspace({ ls: [ls(empty), ls(after)], "terminal.keep": [notYet, '{"tab":"tb-c"}'] });
     await ws.open("t5", { first: false });
     expect(calls.filter((c) => c[1] === "terminal.keep")).toHaveLength(2);
+  });
+
+  it("fails at once on another keep error, and after 10 seconds of not seeing the terminal", async () => {
+    const empty = space("sp-b", "Brigade", "/state/coordinator", []);
+    const broken = workspace({ ls: ls(empty), "terminal.keep": "ERR herdr-app do terminal.keep failed: no window" });
+    await expect(broken.ws.open("t5", { first: false })).rejects.toThrow(/no window$/);
+    expect(broken.calls.filter((c) => c[1] === "terminal.keep")).toHaveLength(1);
+    const notYet = 'ERR herdr-app do terminal.keep failed: { "error": "no running terminal \\"t5\\"" }';
+    const slow = workspace({ ls: ls(empty), "terminal.keep": notYet });
+    await expect(slow.ws.open("t5", { first: false })).rejects.toThrow("no running terminal");
+    expect(slow.calls.filter((c) => c[1] === "terminal.keep")).toHaveLength(21);
   });
 
   it("gives up after 10 seconds when ls never lists the new tab", async () => {

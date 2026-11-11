@@ -1,21 +1,23 @@
 #!/usr/bin/env node
-// The `brigade` command: init, start, status, and mcp (the server each agent starts).
+// The `brigade` command: init, start, open, status, the panel, and mcp (the server each agent starts).
 import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { userInfo } from "node:os";
 import path from "node:path";
-import { listTasks, startCoordinator } from "../application/coordinator.ts";
+import { listTasks, openAgent, openBrigade } from "../application/coordinator.ts";
 import { findTerminals } from "../application/launch.ts";
 import { BrigadeError, errorCode } from "../domain/errors.ts";
-import { HerdrApp, herdrAppRunner, installMod } from "../adapters/herdrApp/herdrApp.ts";
+import { installMod } from "../adapters/herdrApp/herdrApp.ts";
 import { serve } from "../adapters/mcp/protocol.ts";
 import { toolsFor } from "../adapters/mcp/tools.ts";
-import { buildDeps, freshDeps, loadConfig } from "./bootstrap.ts";
+import { buildDeps, buildHerdrApp, buildWorkspace, freshDeps, loadConfig } from "./bootstrap.ts";
 import { readAgentContext, readPaths, type Paths } from "./settings.ts";
 
 const USAGE = `brigade init          write a starter config
-brigade start         start the Coordinator (once), continuing its last conversation, and open it in herdr-app
-brigade start --new   the same, in a new conversation
+brigade start         open the Brigade space in herdr-app: the Coordinator in tab 1 (started once, continuing
+                      its last conversation) and a tab for each running Captain
+brigade start --new   the same, with the Coordinator in a new conversation
+brigade open <t>      open the Coordinator's or a Captain's tab (terminal address t)
 brigade status        list the brigade's agents and tasks
 brigade panel         open or close the Brigade panel as a window
 brigade mod install   install the Brigade panel into herdr-app
@@ -51,28 +53,24 @@ async function init(paths: Paths): Promise<string> {
   return `Wrote ${paths.configFile}. Add your projects to it, then run "brigade start".`;
 }
 
-function herdrApp(paths: Paths): HerdrApp {
-  if (!paths.herdrApp) throw new BrigadeError("herdr-app is not on PATH. Install Herdr's window first.");
-  return new HerdrApp(herdrAppRunner(paths.herdrApp));
-}
-
 async function start(paths: Paths): Promise<string> {
   const deps = buildDeps(await loadConfig(paths), paths);
+  const workspace = buildWorkspace(paths);
   await mkdir(deps.coordinatorFolder, { recursive: true });
-  const { address, started } = await startCoordinator(deps, { fresh: process.argv[3] === "--new" });
+  const { address, started } = await openBrigade(deps, workspace, { fresh: process.argv[3] === "--new" });
   const verb = started ? "Started" : "Already running:";
-  const where = `${verb} the Coordinator in terminal ${address}.`;
-  if (!paths.herdrApp) return `${where} Open it with: hc attach ${address}`;
-  try {
-    await herdrApp(paths).show(address);
-    return `${where} It is open in herdr-app: type to it there.`;
-  } catch (err) {
-    return `${where} Couldn't open it in herdr-app (${err instanceof Error ? err.message : String(err)}). Click it in the Brigade panel, or run: hc attach ${address}`;
-  }
+  return `${verb} the Coordinator in terminal ${address}. It is in tab 1 of the Brigade space in herdr-app.`;
+}
+
+async function open(paths: Paths): Promise<string> {
+  const address = process.argv[3];
+  if (!address) throw new BrigadeError("Usage: brigade open <terminal address>");
+  await openAgent(buildDeps(await loadConfig(paths), paths), buildWorkspace(paths), address);
+  return `Opened ${address} in herdr-app.`;
 }
 
 async function panel(paths: Paths): Promise<string> {
-  await herdrApp(paths).openPanel();
+  await buildHerdrApp(paths).openPanel();
   return "Toggled the Brigade panel window.";
 }
 
@@ -92,7 +90,7 @@ async function modInstall(paths: Paths): Promise<string> {
     configFile: paths.configFile,
     start,
   });
-  const check = await herdrApp(paths).check(target);
+  const check = await buildHerdrApp(paths).check(target);
   return [
     `Installed the Brigade panel in ${target}.`,
     check,
@@ -126,7 +124,7 @@ async function main(command: string | undefined): Promise<number> {
     console.log(await modInstall(paths));
     return 0;
   }
-  const run = { init, start, status, panel }[command ?? ""];
+  const run = { init, start, open, status, panel }[command ?? ""];
   if (!run) {
     console.log(USAGE);
     return command ? 2 : 0;
