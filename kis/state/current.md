@@ -1,16 +1,17 @@
 # Current state
 
-Stamp: main f3de091 be44aac8a90a
+Stamp: main 0db62fe 7e57ba9a585c
 
-- Branch: `main`, in the repo root. No other worktrees. Eleven commits are not pushed yet.
-- Task: phase 3b, the Brigade space (`kis/intent/plan-phase-3b.md`, reviewed twice). T0 to T7 are done; T7 is not committed yet. The live acceptance checks are left. Phase 3a is done (`da84d99`, unreleased).
+- Branch: `main`, in the repo root. No other worktrees. Twelve commits are not pushed yet.
+- Task: phase 3b, the Brigade space (`kis/intent/plan-phase-3b.md`; reviewed twice by Codex, the last change waived by the owner). T0 to T7 and the live checks are done. Check 6 changed the plan: closing the space ends workers too (owner's choice).
 - Blocker: none. No test agents are running.
-- Next: the 3b live checks 1 to 7, in an isolated run (`~/.local/state/herdr-brigade-e2e`), after the owner approves the model. Then the owner runs `brigade mod install` again and looks at the panel.
+- Next: the owner runs `brigade mod install` again and clicks the Coordinator and a Captain in the panel. Then sync KIS for 3b.
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 
 ## Proof
 
+- 3b live checks on 2026-11-11 (`docs/e2e-runs.md`, run `run-resume-claude-20261111-221605`, `claude-sonnet-5-5` low, 2 model calls): checks 1 to 5 and 7 passed. Check 6 found that closing the space ends workers too; the owner accepted that. No test terminal is left running.
 - 3b T7 on 2026-11-11: README, CHANGELOG, `docs/decisions.md`, `docs/architecture.md` and `docs/herdr-app.md` updated; no stale peek claims left (grep). `npm run gate` passed (287 tests).
 - 3b T6 on 2026-11-11: `npm run gate` passed (287 tests). `herdr-app check` passed on scratch copies of the mod with a new `config.js` and with one from before `OPEN`; a named import of `OPEN` failed that check, so the namespace import is needed. A mutation of the `OPEN` line failed the `installMod` test. The panel has not been seen in the live window yet.
 - 3b T5 on 2026-11-11: `npm run gate` passed (287 tests, 97.99% of statements, suppressions 9, 0 vulnerabilities). The CLI ran by hand: the usage text, `open` with no address, `open t999` (refused), and `start`, `open` and `panel` with herdr-app off PATH (a clear message; `start` started no terminal). 2 mutations of the keep retry each failed a named test. `brigade start` has not run against the live window yet.

@@ -23,7 +23,8 @@ Then each running Captain gets a tab in the space, if it has none. The Coordinat
 ## Decisions
 
 - A Captain starts in the background. It gets a tab only on `brigade start`, or when the owner clicks it in the panel (`brigade open <address>`).
-- A Captain ends when the Coordinator ends: it starts without hc's `--outlive-parent`. Workers keep the flag, so a closed space does not lose a worker's work.
+- A Captain ends when the Coordinator ends: it starts without hc's `--outlive-parent`. Workers keep the flag, so `hc kill` on a Captain leaves its workers running.
+- Closing the Brigade space or the Coordinator's tab ends the workers too (owner's choice after live check 6): herdr-app ends a terminal's sub-agents with it, `--outlive-parent` or not. A worker's worktree, commits and file edits stay on disk.
 - Captains that run before this change keep the old flag until they restart. The CHANGELOG tells the owner to stop them once with `hc kill`.
 - Brigade makes the Coordinator tab with one pane. The owner may split it; brigade leaves it as it is.
 - If an agent already has a tab, also outside the Brigade space, `open` shows that tab. Brigade does not move it.
@@ -43,6 +44,7 @@ Probed in T0 on 2026-11-11 (herdr-app 0.1.15, hc 0.1.20; details in `docs/herdr-
 | `tab.close` and `space.close` end the terminals in them, kept ones too. | T0 |
 | When a kept terminal with keep off ends, herdr-app removes its tab, and the space when that was its last tab. | T0 |
 | A child terminal without `--outlive-parent` ends when its parent ends. | T0 |
+| `space.close` also ends the sub-agents of its terminals (children started with `--parent`), even with `--outlive-parent`. A terminal with no hc parent survives. | Live check 6 and a probe |
 | A Captain already starts with `--parent <Coordinator>` (`src/application/coordinator.ts:70`). | Code |
 | `hc ls` lists only live terminals, so an ended Coordinator is not found as running. | `hc ls --help`; 3a live check 1 |
 | What herdr-app does with kept terminals after a window restart or a reboot. | **Untested**: the owner's window must not restart. |
@@ -87,12 +89,14 @@ With core keep on, hc puts a shell where an agent was lost to a reboot. The owne
   3. The Coordinator tab closed (this ends the Coordinator): `brigade start` resumes it in a new tab 1.
   4. The Coordinator ended with `hc kill`: herdr-app removes its tab, and `brigade start` resumes it in a new tab 1.
   5. A Captain started by a Coordinator request has no tab. A panel click opens its tab. `brigade start` gives a tab to a Captain that has none.
-  6. Closing the space ends the Coordinator and the Captain. A worker keeps running.
+  6. Closing the space ends the Coordinator, the Captain and the worker.
   7. `hc get` shows core keep off on every brigade terminal after each of these steps.
 - Not checked live: herdr-app or hc not running. The owner's window and core must not stop, so unit tests cover these.
 - `docs/e2e-runs.md` records every live run, with what was checked by hand.
 
 ## Risks
+
+- A worker reports to the Captain address it got at start. After the Captain restarts, that address is gone, and a running worker's reports are lost. This was already true before 3b; it goes on the backlog.
 
 - The auto-mode classifier blocked hc and herdr-app commands on terminals and the window before. T0 and the live checks need the owner's approval, or the owner runs them.
 - A space named "Brigade" made by the owner, in another folder, is not brigade's. Brigade makes its own space with the Coordinator folder.
@@ -100,7 +104,7 @@ With core keep on, hc puts a shell where an agent was lost to a reboot. The owne
 
 ## Review
 
-- Reviewed: 2026-11-11 by codex GPT-6.1-Sol (medium); plan hash 21f17fc5ec6e
+- Reviewed: waived by the owner 2026-11-11; plan hash 8b8d77b3f43b
 - [fixed] Captains that already run keep `--outlive-parent` - a decision and a CHANGELOG step: stop them once with `hc kill` (T7).
 - [rejected] `find` could take an ended Coordinator as running - `hc ls` lists only live terminals (`--all` adds ended ones), and 3a live check 1 resumed after `hc kill`.
 - [fixed] An agent with a tab in another space - `open` shows that tab and moves nothing (Decisions, T2).

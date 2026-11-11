@@ -33,7 +33,7 @@ Probed with herdr-app 0.1.15 and hc 0.1.20, with `sleep` terminals in a `brigade
 | `hc keep <t> --off` | Turned core keep off. It stayed off, and the tab stayed. |
 | `tab.move {id, index: 1}`, `tab.select {id}` | Worked. |
 | `tab.close {id, confirmed: true}` | Closed the tab and ended its terminal. |
-| `space.close {id, confirmed: true}` | Closed the space and ended its terminals, kept ones too. |
+| `space.close {id, confirmed: true}` | Closed the space and ended its terminals, kept ones too. It also ended their sub-agents (children started with `--parent`), even with `--outlive-parent`; a terminal with no hc parent kept running (live check 6). |
 | `hc kill` on a kept terminal with keep off | herdr-app removed its tab. When that was the last tab, it removed the space and showed the space shown before. |
 | A child started with `--parent P` and without `--outlive-parent` | Ended when P ended. A child with `--outlive-parent` kept running. |
 

@@ -208,3 +208,17 @@ Run folders `run-resume-codex-20261111-140252` (`gpt-6.1-terra` low) and `run-re
 - **Codex:** the Coordinator ran `codex resume --last` from its first start, which began a new session in the empty folder. After `hc kill` and `brigade start` it answered "PELICAN". The Captain ran in `state/captains/demo`, read the repo's README and reported "OTTER" and the README line. After `hc kill`, a new request started it with `codex resume --last`. The request showed once, and it reported "OTTER". `~/.codex/config.toml` was unchanged.
 - **pi:** the same steps with `pi --continue`, and both answers were right. The pi Captain also saved "OTTER" as a project note. So the restart check asked it to answer without tools: the resumed screen showed the earlier request, the new request showed once, and it reported "OTTER".
 - pi dropped the Enter of text typed with a plain `hc send`. Brigade's own `send` already presses Enter again in that case, so this needed only a hand press in the test.
+
+## 2026-11-11: the Brigade space (phase 3b)
+
+Run folder `run-resume-claude-20261111-221605`, every role on `claude-sonnet-5-5` low, driven by hand. herdr-app 0.1.15, hc 0.1.20. Two model calls: the Coordinator and the Captain.
+
+- **No space:** `brigade start` made a space named Brigade in the run's Coordinator folder and showed it. The Coordinator (`t1fb`) was alone in tab 1; the shell tab from `space.new` was gone.
+- **Running Coordinator:** `brigade start` said "Already running" and changed no tab.
+- **Captain:** a Coordinator request started the demo Captain (`t1ff`, parent `t1fb`, `die_with_parent` true) with no tab, and it reported "OTTER". `brigade open t1ff` gave it tab 2 and showed the space. After `terminal.park` took its tab away, `brigade start` gave it a new tab 2 and showed the Coordinator's tab 1 last.
+- **Space closed (decision changed):** a labelled `sleep` worker under the Captain, with `--outlive-parent`, ended with the space, together with the Coordinator and the Captain. A probe with `sleep` terminals showed that herdr-app ends a terminal's sub-agents with it; a terminal with no hc parent survived. The owner chose to accept this (`docs/decisions.md`).
+- **After the close:** `brigade start` made the space again, and the Coordinator continued its conversation (the OTTER exchange was on screen).
+- **Coordinator tab closed:** the Coordinator ended and herdr-app removed the empty space. `brigade start` made both again and continued the conversation.
+- **`hc kill` on the Coordinator:** herdr-app removed its tab and the space. `brigade start` continued the Coordinator in a new tab 1.
+- **Core keep:** `hc get` showed `keep` false on every brigade terminal after each step.
+- **Checked by hand:** each layout through `herdr-app ls`, and each terminal through `hc get`. The panel was not clicked: the installed mod points at the owner's real state.

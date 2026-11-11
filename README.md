@@ -49,7 +49,7 @@ npm run brigade -- mod install   # installs the Brigade panel into herdr-app
 2. Add a project by chat: *"add my repo shop-site as a project"*. Brigade looks for the repo under `~/Repositories` (set `repoRoots` to change that). If the repo's `origin` is on GitHub, that repo is pinned, and pull requests go only there.
 3. Ask for work: *"in shop-site, add a dark mode toggle and open a pull request"*. The Captain starts a worker and reports back when it finishes or needs you.
 4. In the panel, click the Coordinator or a Captain to open its tab. Click a task to show its worker over your tab and talk to it.
-5. To stop, close the Brigade space or the Coordinator's tab. The Coordinator and its Captains end; workers keep running. The next `start` continues the same conversations.
+5. To stop, close the Brigade space or the Coordinator's tab. The Coordinator, its Captains and their workers end. A worker's worktree, commits and file edits stay. The next `start` continues the Coordinator's and the Captains' conversations.
 
 Project notes are lasting preferences, such as *"remember for shop-site: designs use little text"*. Every new worker of that project starts with them. Workers can suggest notes; the Captain accepts, merges or rejects each one.
 
