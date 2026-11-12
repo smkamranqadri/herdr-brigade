@@ -1,6 +1,6 @@
 # Current state
 
-Stamp: main 0e30375 a2d77ad791b0
+Stamp: main 466ddb4 f3aa70a781e9
 
 - Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
 - Task: none in progress. Project spaces and worker resume (`kis/intent/plan-tabs.md`) are done and synced to Reality.
