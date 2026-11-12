@@ -1,6 +1,6 @@
 # Plan: tabs for Captains and workers, and worker resume
 
-Status: scope approved by the owner on 2026-11-12. Follows phase 3b (`kis/intent/plan-phase-3b.md`).
+Status: done 2026-11-12. Scope approved by the owner on 2026-11-12. Follows phase 3b (`kis/intent/plan-phase-3b.md`).
 
 ## Goal
 
@@ -57,7 +57,7 @@ The Brigade space holds only the Coordinator, so the owner finds it at once. Eac
 - [x] **T5 Worker resume.** A new use case resumes a task's worker, as set out in "How a worker resumes". `launchAgent` gets an option to refuse on `no_session` instead of retrying. `Worktrees` gets a check that the task's worktree is still in place. Tests cover: a running worker (no resume), no Captain, a missing worktree, no pinned repo, `no_session`, a worker that never becomes ready, two resumes at once, changed worker defaults and a changed project repo (the exact launch request and write folders), and the event.
 - [x] **T6 Open a task.** `brigade open <task id>` (`src/entrypoints/cli.ts`) shows the worker's tab in the project space, and resumes the worker first when it has ended. Brigade stays on that tab. Coordinator and Captain addresses work as now.
 - [x] **T7 Follow-up.** `sendToTask` (`src/application/captain.ts`) resumes an ended worker, then sends. Its reply says the worker was resumed.
-- [ ] **T8 Panel.** In `mod/main.js`, a click on a task row or rail cell runs `brigade open <task id>`, also when the worker has ended. A task open may take longer than the 30 s limit for other opens, so it gets its own limit, and repeat clicks on the same row are ignored while it runs. Peek stays only as the fallback for a `config.js` from before `OPEN`. Fix the rail's `open` name, which a task list of the same name hides, and check the rail clicks in the window. The owner runs `brigade mod install` again.
+- [x] **T8 Panel.** In `mod/main.js`, a click on a task row or rail cell runs `brigade open <task id>`, also when the worker has ended. A task open may take longer than the 30 s limit for other opens, so it gets its own limit, and repeat clicks on the same row are ignored while it runs. Peek stays only as the fallback for a `config.js` from before `OPEN`. Fix the rail's `open` name, which a task list of the same name hides, and check the rail clicks in the window. The owner runs `brigade mod install` again.
 - [x] **T9 Docs.** `README.md`, `CHANGELOG.md` (Unreleased), `docs/herdr-app.md`, `docs/decisions.md` (project spaces, worker resume by folder, and the Codex and pi resume risk), `SECURITY.md` (that risk as a known limit) and the Captain prompt, if it names the old "start a new task" answer.
 
 ## Out of scope

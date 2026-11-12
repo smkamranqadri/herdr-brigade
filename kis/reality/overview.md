@@ -12,14 +12,15 @@ The latest release is v1.2.0 (2026-11-10). `CHANGELOG.md` lists each release.
 | Worktrees and commits | Each task gets a branch and git worktree. Workers commit through brigade, which checks the worktree first. | 1.0.0 |
 | Pull requests | `create_pull_request` pushes only to the pinned repo, never with force, and never to a merged or closed PR's branch. | 1.0.0 |
 | Project notes | Every new worker starts with its project's notes, within a budget. The Captain settles workers' suggested notes. | 1.0.0 |
-| Brigade panel | A herdr-app panel shows agents, tasks, PR chips, note counts and events. It has a Start button. A click on the Coordinator or a Captain opens its tab (Unreleased); a click on a task row peeks at its worker. | 1.0.0 |
+| Brigade panel | A herdr-app panel shows agents, tasks, PR chips, note counts and events. It has a Start button. A click on an agent or a task opens its tab (Unreleased); a click on an ended worker's task resumes it first. | 1.0.0 |
 | `repo_status` | The Coordinator and Captains read a project's branch, changes, commits, worktrees and open PRs without a shell. | 1.1.0 |
 | `herdr_agents` | The Coordinator lists every live terminal in Herdr. | 1.1.0 |
 | Captain answers | A Captain answers every Coordinator request through `report`. | 1.1.0 |
 | Owner's MCP servers | A Claude Coordinator also loads the owner's own MCP servers, such as a task app. Claude Captains and workers get brigade's server only. | 1.2.0 |
 | Panel column and rail | The panel can sit in its own layout column, so it stays in every space. An icon or the `brigade.toggle` key folds it to a rail of clickable agent icons (`docs/herdr-app.md`). | Unreleased (`8082856`) |
 | Resume | The Coordinator and each Captain continue their last conversation after a stop or a reboot, on Claude, Codex or pi. Each Captain runs in a folder of its own and reads its repo from there. `brigade start --new` starts the Coordinator in a new conversation. | Unreleased (`da84d99`) |
-| Brigade space | `brigade start` opens a herdr-app space named Brigade, with the Coordinator in tab 1 and a tab for each running Captain. `brigade open <t>` shows an agent's tab. Captains end with the Coordinator. Closing the space or the Coordinator tab ends the Coordinator, its Captains and their workers; worktrees and commits stay. Core keep stays off on brigade terminals. | Unreleased (`729fb38`) |
+| Brigade space | `brigade start` opens a herdr-app space named Brigade with only the Coordinator, and each running Captain in its project's space (the first space whose folder is the repo, or one brigade makes). A new Captain gets its tab at start, and the owner's view comes back. `brigade open <t>` shows an agent's tab. Captains end with the Coordinator. Closing a space or tab ends the agents in it and their sub-agents; worktrees and commits stay. Core keep stays off on brigade terminals. | Unreleased (`ebc1a49`) |
+| Worker resume | A worker whose tab or space was closed resumes in its worktree on a task click, `brigade open <task id>`, or a Captain follow-up. It keeps its task's model, limits and repo, and needs its project's Captain running. One resume per task runs at a time. Codex and pi may resume without the brief if the session is gone (`SECURITY.md`). | Unreleased (`ebc1a49`) |
 
 ## Known defects
 
