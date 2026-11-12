@@ -230,7 +230,7 @@ async function brigade() {
 }
 
 const COORDINATOR_TAB = { address: "t1", folder: "/state/coordinator", first: true, back: false };
-const SHOP_CAPTAIN_TAB = { address: "t2", folder: "/repos/shop", first: false, back: false };
+const SHOP_CAPTAIN_TAB = { address: "t2", folder: "/state/coordinator", first: false, back: false };
 
 describe("brigade instances", () => {
   it("labels terminals with its own instance, and does not see another instance's Coordinator", async () => {
@@ -258,7 +258,7 @@ describe("openBrigade", () => {
     expect(f.harnesses.requests[0]).toMatchObject({ resume: true });
   });
 
-  it("opens each running Captain in its project's space, shows the Coordinator last, and sweeps", async () => {
+  it("opens each running Captain in the Brigade space, shows the Coordinator last, and sweeps", async () => {
     const f = await brigade();
     expect(await openBrigade(f.deps)).toEqual({ address: "t1", started: false });
     expect(f.workspace.opened).toEqual([COORDINATOR_TAB, SHOP_CAPTAIN_TAB, COORDINATOR_TAB]);
@@ -321,7 +321,7 @@ describe("openBrigade", () => {
 });
 
 describe("openAgent", () => {
-  it("opens a Captain in its project's space and the Coordinator first, turning core keep off on each", async () => {
+  it("opens a Captain and the Coordinator in the Brigade space, the Coordinator first, turning core keep off on each", async () => {
     const f = await brigade();
     await openAgent(f.deps, "t2");
     await openAgent(f.deps, "t1");
@@ -349,12 +349,12 @@ describe("a new Captain's tab", () => {
   const send = (f: ReturnType<typeof fakeDeps>) =>
     sendToCaptain(f.deps, ctx({ role: "coordinator", terminal: "t9" }), { project: "shop", message: "Fix login" });
 
-  it("opens in the project's space, shows the owner's tab again, and turns core keep off", async () => {
+  it("opens in the Brigade space, not the project's, shows the owner's tab again, and turns core keep off", async () => {
     const f = fakeDeps();
     expect(await send(f)).toBe(
       "Sent to the shop Captain, which was started for it. End your turn; its report arrives as a [brigade] message.",
     );
-    expect(f.workspace.opened).toEqual([{ address: "t1", folder: "/repos/shop", first: false, back: true }]);
+    expect(f.workspace.opened).toEqual([{ address: "t1", folder: "/state/coordinator", first: false, back: true }]);
     expect(f.terminals.keptOff).toEqual(["t1"]);
   });
 
