@@ -5,7 +5,7 @@ import { prLine } from "../domain/pullRequests.ts";
 import { deriveTasks } from "../domain/tasks.ts";
 import { refreshPrs } from "./publish.ts";
 import { findTerminals, launchAgent, record, terminalName } from "./launch.ts";
-import type { Deps, Workspace } from "./ports.ts";
+import type { Deps, OpenOptions, SpacePlace } from "./ports.ts";
 
 export function projectNamed(deps: Deps, name: string): ProjectConfig {
   const project = deps.config.projects.find((p) => p.name === name);
@@ -48,14 +48,27 @@ export async function startCoordinator(
 
 const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
+/** The Brigade space: the Coordinator's, found by the Coordinator's folder. */
+function brigadePlace(deps: Deps): SpacePlace {
+  return { name: "Brigade", folder: deps.coordinatorFolder };
+}
+
+/** A project's space: found by the repo folder, and named after the project when brigade makes it. */
+function projectPlace(project: ProjectConfig): SpacePlace {
+  return { name: project.name, folder: project.repo };
+}
+
 /** Shows the terminal's tab, then turns core keep off on it, also when showing failed: herdr-app turns it on. */
-async function openTab(deps: Deps, workspace: Workspace, address: string, first: boolean): Promise<void> {
+async function openTab(deps: Deps, address: string, options: OpenOptions): Promise<void> {
   try {
-    await workspace.open(address, { first });
+    await deps.workspace.open(address, options);
   } finally {
     await deps.terminals.keepOff(address);
   }
 }
+
+const COORDINATOR_TAB = { first: true, returnToView: false } as const;
+const CAPTAIN_TAB = { first: false, returnToView: false } as const;
 
 /** Turns core keep off on every brigade terminal, past any failure. Returns one line per failure. */
 async function keepOffAll(deps: Deps): Promise<string[]> {
@@ -70,24 +83,35 @@ async function keepOffAll(deps: Deps): Promise<string[]> {
   return failed;
 }
 
-/** The Coordinator in tab 1, a tab for each running Captain, and the Coordinator shown last. */
-async function openTabs(deps: Deps, workspace: Workspace, coordinator: string): Promise<void> {
-  await openTab(deps, workspace, coordinator, true);
-  for (const captain of await findTerminals(deps, { role: "captain" }))
-    await openTab(deps, workspace, captain.address, false);
-  await openTab(deps, workspace, coordinator, true);
+/** The running Captain of each configured project. A Captain of a project no longer in the config is left out. */
+async function runningCaptains(deps: Deps): Promise<{ project: ProjectConfig; address: string }[]> {
+  const found: { project: ProjectConfig; address: string }[] = [];
+  for (const project of deps.config.projects) {
+    const [captain] = await findTerminals(deps, { role: "captain", project: project.name });
+    if (captain) found.push({ project, address: captain.address });
+  }
+  return found;
+}
+
+/** The Coordinator in tab 1 of the Brigade space, each running Captain in its project's space, the Coordinator last. */
+async function openTabs(deps: Deps, coordinator: string): Promise<void> {
+  const brigade = { place: brigadePlace(deps), ...COORDINATOR_TAB };
+  await openTab(deps, coordinator, brigade);
+  for (const { project, address } of await runningCaptains(deps))
+    await openTab(deps, address, { place: projectPlace(project), ...CAPTAIN_TAB });
+  await openTab(deps, coordinator, brigade);
 }
 
 /**
- * `brigade start`: checks the window and hc, starts the Coordinator unless it runs, and opens it and the running
- * Captains in the Brigade space. Core keep is turned off on every brigade terminal at the end, also after a failure.
+ * `brigade start`: checks the window and hc, starts the Coordinator unless it runs, and opens it in the Brigade space
+ * and the running Captains in their projects' spaces. Core keep is turned off on every brigade terminal at the end,
+ * also after a failure.
  */
 export async function openBrigade(
   deps: Deps,
-  workspace: Workspace,
   options: { fresh?: boolean } = {},
 ): Promise<{ address: string; started: boolean }> {
-  await workspace.check();
+  await deps.workspace.check();
   await findTerminals(deps, {}).catch((err: unknown) => {
     throw new BrigadeError(`hc is not answering. Check it with "hc server status". (${messageOf(err)})`);
   });
@@ -95,7 +119,7 @@ export async function openBrigade(
   let result: { address: string; started: boolean } | null = null;
   try {
     result = await startCoordinator(deps, options);
-    await openTabs(deps, workspace, result.address);
+    await openTabs(deps, result.address);
   } catch (err) {
     errors.push(messageOf(err));
   }
@@ -104,31 +128,42 @@ export async function openBrigade(
   return result;
 }
 
-/** `brigade open <address>`: shows a Coordinator's or a Captain's tab. Workers are shown over the tab (peek) instead. */
-export async function openAgent(deps: Deps, workspace: Workspace, address: string): Promise<void> {
-  await workspace.check();
+/** `brigade open <address>`: shows the Coordinator's tab, or a Captain's in its project's space. */
+export async function openAgent(deps: Deps, address: string): Promise<void> {
+  await deps.workspace.check();
   const coordinators = await findTerminals(deps, { role: "coordinator" });
-  const captains = await findTerminals(deps, { role: "captain" });
-  const isCoordinator = coordinators.some((t) => t.address === address);
-  if (!isCoordinator && !captains.some((t) => t.address === address))
-    throw new BrigadeError(`${address} is not a running Coordinator or Captain.`);
-  await openTab(deps, workspace, address, isCoordinator);
+  if (coordinators.some((t) => t.address === address))
+    return openTab(deps, address, { place: brigadePlace(deps), ...COORDINATOR_TAB });
+  const captain = (await runningCaptains(deps)).find((c) => c.address === address);
+  if (!captain) throw new BrigadeError(`${address} is not a running Coordinator or Captain.`);
+  await openTab(deps, address, { place: projectPlace(captain.project), ...CAPTAIN_TAB });
+}
+
+/** Opens a new Captain's tab in its project's space and shows the owner's tab again. Returns a note when it fails. */
+async function openNewCaptainTab(deps: Deps, project: ProjectConfig, address: string): Promise<string> {
+  try {
+    await openTab(deps, address, { place: projectPlace(project), first: false, returnToView: true });
+    return "";
+  } catch (err) {
+    return ` It runs, but its tab failed (${messageOf(err)}). The owner can open it from the panel or with "brigade start".`;
+  }
 }
 
 /**
  * Starts a project's Captain with `firstMessage` as its first input. It runs in a folder of its own, so the newest
- * conversation there is always its own to continue, and it reads the repo from there.
+ * conversation there is always its own to continue, and it reads the repo from there. Then it gets a tab in its
+ * project's space; returns a note for the reply when that fails.
  */
 async function startCaptain(
   deps: Deps,
   ctx: AgentContext,
   project: ProjectConfig,
   firstMessage: string,
-): Promise<void> {
+): Promise<string> {
   const spec = deps.config.roles.captain;
   const folder = `${deps.captainsFolder}/${project.name}`;
   await deps.folders.ensure(folder);
-  await launchAgent(
+  const address = await launchAgent(
     deps,
     {
       spec,
@@ -142,6 +177,7 @@ async function startCaptain(
     },
     (terminal) => ({ kind: "agent_started", role: "captain", project: project.name, terminal, spec }),
   );
+  return openNewCaptainTab(deps, project, address);
 }
 
 /** Sends work to a project's Captain, starting the Captain first if it isn't running. */
@@ -153,8 +189,9 @@ export async function sendToCaptain(
   const project = projectNamed(deps, input.project);
   const text = `[brigade] From the Coordinator: ${input.message}`;
   const [captain] = await findTerminals(deps, { role: "captain", project: project.name });
+  let tabNote = "";
   if (captain) await deps.terminals.send(captain.address, text);
-  else await startCaptain(deps, ctx, project, text);
+  else tabNote = await startCaptain(deps, ctx, project, text);
   await record(deps, {
     kind: "message_sent",
     from: "coordinator",
@@ -163,7 +200,7 @@ export async function sendToCaptain(
     task: null,
     text: input.message,
   });
-  return `Sent to the ${project.name} Captain${captain ? "" : ", which was started for it"}. End your turn; its report arrives as a [brigade] message.`;
+  return `Sent to the ${project.name} Captain${captain ? "" : ", which was started for it"}.${tabNote} End your turn; its report arrives as a [brigade] message.`;
 }
 
 export function listProjects(deps: Deps): string {

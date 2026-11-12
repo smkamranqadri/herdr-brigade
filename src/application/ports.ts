@@ -63,14 +63,32 @@ export interface Terminals {
  * Where the owner sees agents: a multiplexer's spaces and tabs. herdr-app is the first. Brigade starts agents through
  * Terminals; the Workspace only shows them.
  */
+/** A space in the Workspace: found by its folder alone, and made with this name when no space has that folder. */
+export interface SpacePlace {
+  readonly name: string;
+  readonly folder: string;
+}
+
+export interface OpenOptions {
+  /** Where a terminal with no tab gets one. */
+  readonly place: SpacePlace;
+  /** Move the tab to position 1, but only when it is in `place`'s space. */
+  readonly first: boolean;
+  /**
+   * Show the owner's earlier space and tab again at the end, also after a failure. Best effort: a tab or space that
+   * has gone is skipped.
+   */
+  readonly returnToView: boolean;
+}
+
 export interface Workspace {
   /** Fails with a message for the owner when the window is not running. */
   check(): Promise<void>;
   /**
-   * Shows the terminal's tab. A terminal with no tab gets one in the Brigade space, which is made when it is missing.
-   * With first, a tab in the Brigade space moves to position 1; a tab in another space is shown and not moved.
+   * Shows the terminal's tab. A terminal with no tab gets one in the first space whose folder is `place.folder`; that
+   * space is made when there is none. A tab in another space is shown and not moved.
    */
-  open(address: string, options: { readonly first: boolean }): Promise<void>;
+  open(address: string, options: OpenOptions): Promise<void>;
 }
 
 /** One live terminal as Herdr shows it. */
@@ -293,4 +311,6 @@ export interface Deps {
   readonly coordinatorFolder: string;
   /** Each Captain runs in its own folder here, named after its project. */
   readonly captainsFolder: string;
+  /** Where the owner sees agents. */
+  readonly workspace: Workspace;
 }

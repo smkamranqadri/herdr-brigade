@@ -1,8 +1,8 @@
-// herdr-app, the Herdr window: the Brigade space and its tabs, the Brigade panel, and installing and checking the mod.
+// herdr-app, the Herdr window: brigade's spaces and tabs, the Brigade panel, and installing and checking the mod.
 import { execFile } from "node:child_process";
 import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Workspace } from "../../application/ports.ts";
+import type { OpenOptions, SpacePlace, Workspace } from "../../application/ports.ts";
 import { BrigadeError } from "../../domain/errors.ts";
 
 /** Runs herdr-app with these arguments and returns what it printed. */
@@ -84,14 +84,9 @@ export class HerdrApp {
   }
 }
 
-/** The space brigade makes and finds by both name and folder, so an owner's space of the same name is left alone. */
-export interface BrigadeSpace {
-  readonly name: string;
-  readonly folder: string;
-}
-
 interface LsTab {
   readonly id: string;
+  readonly active: boolean;
   readonly terminals: readonly string[];
 }
 
@@ -99,6 +94,7 @@ interface LsSpace {
   readonly id: string;
   readonly name: string;
   readonly folder: string | null;
+  readonly active: boolean;
   readonly tabs: readonly LsTab[];
 }
 
@@ -109,9 +105,16 @@ interface Place {
   readonly index: number;
 }
 
+/** What the owner sees: the shown space and its shown tab, when it has one. */
+interface View {
+  readonly space: string;
+  readonly tab: string | null;
+}
+
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 const text = (v: unknown): string => (typeof v === "string" ? v : "");
 const objects = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter(isObject) : []);
+const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 function parseObject(out: string, what: string): Record<string, unknown> {
   const got: unknown = JSON.parse(out);
@@ -119,7 +122,7 @@ function parseObject(out: string, what: string): Record<string, unknown> {
   return got;
 }
 
-/** `herdr-app ls`: spaces, their tabs, and the terminals in each tab. */
+/** `herdr-app ls`: spaces, their tabs, the terminals in each tab, and which space and tabs are shown. */
 function parseLayout(out: string): LsSpace[] {
   const got = parseObject(out, "ls");
   if (!Array.isArray(got.spaces)) throw new Error("herdr-app ls returned no spaces");
@@ -127,8 +130,10 @@ function parseLayout(out: string): LsSpace[] {
     id: text(s.id),
     name: text(s.name),
     folder: typeof s.folder === "string" ? s.folder : null,
+    active: s.active === true,
     tabs: objects(s.tabs).map((t) => ({
       id: text(t.id),
+      active: t.active === true,
       terminals: objects(t.terminals).map((x) => text(x.terminal)),
     })),
   }));
@@ -141,38 +146,63 @@ function findPlace(spaces: readonly LsSpace[], match: (tab: LsTab) => boolean): 
   return null;
 }
 
+function shownView(spaces: readonly LsSpace[]): View | null {
+  const space = spaces.find((s) => s.active);
+  if (!space) return null;
+  return { space: space.id, tab: space.tabs.find((t) => t.active)?.id ?? null };
+}
+
+/** herdr-app's answer when an id is gone: the owner closed that tab or space meanwhile. */
+const GONE = /no such (tab|space)/;
+
 /**
  * herdr-app as brigade's Workspace. A tab comes from terminal.keep, which needs a running terminal and puts the tab in
- * the shown space; probed on 2026-11-11 (docs/herdr-app.md).
+ * the shown space. `tab.select` also shows the tab's space. Probed on 2026-11-11 and 2026-11-12 (docs/herdr-app.md).
  */
 export class HerdrAppWorkspace implements Workspace {
   private readonly c: Clocked;
-  private readonly space: BrigadeSpace;
 
-  constructor(run: HerdrAppRunner, space: BrigadeSpace, options: HerdrAppOptions = {}) {
+  constructor(run: HerdrAppRunner, options: HerdrAppOptions = {}) {
     this.c = clocked(run, options);
-    this.space = space;
   }
 
   async check(): Promise<void> {
     try {
       await this.c.run(["status"]);
     } catch (err) {
-      const why = err instanceof Error ? err.message : String(err);
-      throw new BrigadeError(`herdr-app is not running. Open it, then try again. (${why})`);
+      throw new BrigadeError(`herdr-app is not running. Open it, then try again. (${messageOf(err)})`);
     }
   }
 
-  async open(address: string, { first }: { readonly first: boolean }): Promise<void> {
+  async open(address: string, options: OpenOptions): Promise<void> {
     const layout = await this.layout();
+    const view = options.returnToView ? shownView(layout) : null;
+    let failure: Error | null = null;
+    try {
+      await this.show(layout, address, options);
+    } catch (err) {
+      failure = err instanceof Error ? err : new Error(String(err));
+    }
+    const restoreError = view ? await this.restore(view) : null;
+    if (failure !== null && restoreError === null) throw failure;
+    if (failure !== null || restoreError !== null)
+      throw new BrigadeError(
+        [failure, restoreError]
+          .filter((e) => e !== null)
+          .map(messageOf)
+          .join("\n"),
+      );
+  }
+
+  private async show(layout: readonly LsSpace[], address: string, { place, first }: OpenOptions): Promise<void> {
     const found = findPlace(layout, (t) => t.terminals.includes(address));
-    if (found) return this.showFound(found, first);
-    const { spaceId, shellTab } = await this.enterSpace(layout);
+    if (found) return this.showFound(found, place, first);
+    const { spaceId, shellTab } = await this.enterSpace(layout, place);
     const tab = await this.keep(address);
     const placed = await this.waitForTab(tab);
     if (placed.space.id !== spaceId)
       throw new BrigadeError(
-        `herdr-app put the tab for ${address} in the space "${placed.space.name}", not in "${this.space.name}". ` +
+        `herdr-app put the tab for ${address} in the space "${placed.space.name}", not in "${place.name}". ` +
           "Brigade moved nothing. Close that tab and try again.",
       );
     if (first && placed.index !== 1) await this.do("tab.move", { id: tab, index: "1" });
@@ -180,27 +210,51 @@ export class HerdrAppWorkspace implements Workspace {
     if (shellTab) await this.do("tab.close", { id: shellTab, confirmed: "true" });
   }
 
-  private isBrigade(space: LsSpace): boolean {
-    return space.name === this.space.name && space.folder === this.space.folder;
+  private async showFound(found: Place, place: SpacePlace, first: boolean): Promise<void> {
+    if (first && found.index !== 1 && found.space.folder === place.folder)
+      await this.do("tab.move", { id: found.tab.id, index: "1" });
+    await this.do("space.select", { id: found.space.id });
+    await this.do("tab.select", { id: found.tab.id });
   }
 
-  private async showFound(place: Place, first: boolean): Promise<void> {
-    if (first && place.index !== 1 && this.isBrigade(place.space))
-      await this.do("tab.move", { id: place.tab.id, index: "1" });
-    await this.do("space.select", { id: place.space.id });
-    await this.do("tab.select", { id: place.tab.id });
-  }
-
-  /** Shows the Brigade space, or makes it. space.new gives it a shell tab, to close once brigade's tab is there. */
-  private async enterSpace(layout: readonly LsSpace[]): Promise<{ spaceId: string; shellTab: string | null }> {
-    const existing = layout.find((s) => this.isBrigade(s));
+  /** Shows the place's space, or makes it. space.new gives it a shell tab, to close once brigade's tab is there. */
+  private async enterSpace(
+    layout: readonly LsSpace[],
+    place: SpacePlace,
+  ): Promise<{ spaceId: string; shellTab: string | null }> {
+    const existing = layout.find((s) => s.folder === place.folder);
     if (existing) {
       await this.do("space.select", { id: existing.id });
       return { spaceId: existing.id, shellTab: null };
     }
-    const made = parseObject(await this.do("space.new", { ...this.space }), "space.new");
+    const made = parseObject(await this.do("space.new", { name: place.name, folder: place.folder }), "space.new");
     if (!text(made.space)) throw new Error("herdr-app space.new returned no space");
     return { spaceId: text(made.space), shellTab: text(made.tab) || null };
+  }
+
+  /** Shows the earlier tab, or its space when the tab has gone. Returns an error to report, or null. */
+  private async restore(view: View): Promise<string | null> {
+    try {
+      if (view.tab) {
+        const shown = await this.selectUnlessGone("tab.select", view.tab);
+        if (shown) return null;
+      }
+      await this.selectUnlessGone("space.select", view.space);
+      return null;
+    } catch (err) {
+      return `Brigade could not show your earlier tab again: ${messageOf(err)}`;
+    }
+  }
+
+  /** Runs a select; false when its id has gone. */
+  private async selectUnlessGone(command: string, id: string): Promise<boolean> {
+    try {
+      await this.do(command, { id });
+      return true;
+    } catch (err) {
+      if (GONE.test(messageOf(err))) return false;
+      throw err;
+    }
   }
 
   private async keep(address: string): Promise<string> {

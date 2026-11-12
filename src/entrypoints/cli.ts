@@ -10,7 +10,7 @@ import { BrigadeError, errorCode } from "../domain/errors.ts";
 import { installMod } from "../adapters/herdrApp/herdrApp.ts";
 import { serve } from "../adapters/mcp/protocol.ts";
 import { toolsFor } from "../adapters/mcp/tools.ts";
-import { buildDeps, buildHerdrApp, buildWorkspace, freshDeps, loadConfig } from "./bootstrap.ts";
+import { buildDeps, buildHerdrApp, freshDeps, loadConfig } from "./bootstrap.ts";
 import { readAgentContext, readPaths, type Paths } from "./settings.ts";
 
 const USAGE = `brigade init          write a starter config
@@ -55,9 +55,8 @@ async function init(paths: Paths): Promise<string> {
 
 async function start(paths: Paths): Promise<string> {
   const deps = buildDeps(await loadConfig(paths), paths);
-  const workspace = buildWorkspace(paths);
   await mkdir(deps.coordinatorFolder, { recursive: true });
-  const { address, started } = await openBrigade(deps, workspace, { fresh: process.argv[3] === "--new" });
+  const { address, started } = await openBrigade(deps, { fresh: process.argv[3] === "--new" });
   const verb = started ? "Started" : "Already running:";
   return `${verb} the Coordinator in terminal ${address}. It is in tab 1 of the Brigade space in herdr-app.`;
 }
@@ -65,7 +64,7 @@ async function start(paths: Paths): Promise<string> {
 async function open(paths: Paths): Promise<string> {
   const address = process.argv[3];
   if (!address) throw new BrigadeError("Usage: brigade open <terminal address>");
-  await openAgent(buildDeps(await loadConfig(paths), paths), buildWorkspace(paths), address);
+  await openAgent(buildDeps(await loadConfig(paths), paths), address);
   return `Opened ${address} in herdr-app.`;
 }
 

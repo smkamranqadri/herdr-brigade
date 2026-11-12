@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { listProjects, listTasks, openAgent, openBrigade, sendToCaptain, startCoordinator } from "./coordinator.ts";
-import { ctx, FakeWorkspace, fakeDeps } from "./fakes.ts";
+import { ctx, fakeDeps } from "./fakes.ts";
 
 const coordinator = ctx({ role: "coordinator", terminal: "t9" });
 
@@ -196,10 +196,9 @@ describe("listTasks", () => {
   });
 });
 
-/** A running Coordinator (t1) with the shop Captain (t2), and a worker (t3) under it. */
+/** A running Coordinator (t1) with the shop Captain (t2), and a worker (t3) under it. Setup opens are cleared. */
 async function brigade() {
   const f = fakeDeps();
-  const workspace = new FakeWorkspace();
   await startCoordinator(f.deps);
   await sendToCaptain(f.deps, ctx({ role: "coordinator", terminal: "t1" }), { project: "shop", message: "Fix login" });
   f.terminals.live.push({
@@ -208,39 +207,42 @@ async function brigade() {
     labels: { brigade: "main", role: "worker" },
     status: null,
   });
-  return { ...f, workspace };
+  f.workspace.opened.length = 0;
+  f.terminals.keptOff.length = 0;
+  return f;
 }
 
+const COORDINATOR_TAB = { address: "t1", folder: "/state/coordinator", first: true, back: false };
+const SHOP_CAPTAIN_TAB = { address: "t2", folder: "/repos/shop", first: false, back: false };
+
 describe("openBrigade", () => {
-  it("starts the Coordinator, opens it first, and turns core keep off on it", async () => {
+  it("starts the Coordinator, opens it first in the Brigade space, and turns core keep off on it", async () => {
     const f = fakeDeps();
-    const workspace = new FakeWorkspace();
-    expect(await openBrigade(f.deps, workspace)).toEqual({ address: "t1", started: true });
-    expect(workspace.checks).toEqual([0]);
-    expect(workspace.opened).toEqual([
-      { address: "t1", first: true },
-      { address: "t1", first: true },
-    ]);
+    expect(await openBrigade(f.deps)).toEqual({ address: "t1", started: true });
+    expect(f.workspace.checks).toEqual([0]);
+    expect(f.workspace.opened).toEqual([COORDINATOR_TAB, COORDINATOR_TAB]);
     expect(f.terminals.keptOff).toEqual(["t1", "t1", "t1"]);
     expect(f.harnesses.requests[0]).toMatchObject({ resume: true });
   });
 
-  it("gives each running Captain a tab, shows the Coordinator last, and sweeps every brigade terminal", async () => {
+  it("opens each running Captain in its project's space, shows the Coordinator last, and sweeps", async () => {
     const f = await brigade();
-    expect(await openBrigade(f.deps, f.workspace)).toEqual({ address: "t1", started: false });
-    expect(f.workspace.opened).toEqual([
-      { address: "t1", first: true },
-      { address: "t2", first: false },
-      { address: "t1", first: true },
-    ]);
+    expect(await openBrigade(f.deps)).toEqual({ address: "t1", started: false });
+    expect(f.workspace.opened).toEqual([COORDINATOR_TAB, SHOP_CAPTAIN_TAB, COORDINATOR_TAB]);
     expect(f.terminals.keptOff).toEqual(["t1", "t2", "t1", "t1", "t2", "t3"]);
+  });
+
+  it("gives no tab to a Captain whose project is no longer in the config", async () => {
+    const f = await brigade();
+    const deps = { ...f.deps, config: { ...f.deps.config, projects: [] } };
+    await openBrigade(deps);
+    expect(f.workspace.opened).toEqual([COORDINATOR_TAB, COORDINATOR_TAB]);
   });
 
   it("starts nothing when the window is not running", async () => {
     const f = fakeDeps();
-    const workspace = new FakeWorkspace();
-    workspace.checkError = new Error("herdr-app is not running.");
-    await expect(openBrigade(f.deps, workspace)).rejects.toThrow(/^herdr-app is not running\.$/);
+    f.workspace.checkError = new Error("herdr-app is not running.");
+    await expect(openBrigade(f.deps)).rejects.toThrow(/^herdr-app is not running\.$/);
     expect(f.terminals.launched).toEqual([]);
     expect(f.terminals.keptOff).toEqual([]);
   });
@@ -248,7 +250,7 @@ describe("openBrigade", () => {
   it("starts nothing when hc does not answer", async () => {
     const f = fakeDeps();
     f.terminals.findError = new Error("connection refused");
-    await expect(openBrigade(f.deps, new FakeWorkspace())).rejects.toThrow(
+    await expect(openBrigade(f.deps)).rejects.toThrow(
       /^hc is not answering\. Check it with "hc server status"\. \(connection refused\)$/,
     );
     expect(f.terminals.launched).toEqual([]);
@@ -257,14 +259,14 @@ describe("openBrigade", () => {
   it("still turns core keep off on every terminal when a tab fails to open", async () => {
     const f = await brigade();
     f.workspace.openFails.add("t2");
-    await expect(openBrigade(f.deps, f.workspace)).rejects.toThrow(/^no tab for t2$/);
+    await expect(openBrigade(f.deps)).rejects.toThrow(/^no tab for t2$/);
     expect(f.terminals.keptOff).toEqual(["t1", "t2", "t1", "t2", "t3"]);
   });
 
   it("tries every terminal when keep stays on, and reports each failure once", async () => {
     const f = await brigade();
     f.terminals.keepOffFails.add("t2");
-    await expect(openBrigade(f.deps, f.workspace)).rejects.toThrow(/^Core keep is still on for t2\.$/);
+    await expect(openBrigade(f.deps)).rejects.toThrow(/^Core keep is still on for t2\.$/);
     expect(f.terminals.keptOff).toEqual(["t1", "t2", "t1", "t2", "t3"]);
   });
 
@@ -272,12 +274,12 @@ describe("openBrigade", () => {
     const f = await brigade();
     f.workspace.openFails.add("t2");
     f.terminals.keepOffFails.add("t3");
-    await expect(openBrigade(f.deps, f.workspace)).rejects.toThrow(/^no tab for t2\nCore keep is still on for t3\.$/);
+    await expect(openBrigade(f.deps)).rejects.toThrow(/^no tab for t2\nCore keep is still on for t3\.$/);
   });
 
   it("passes on the --new refusal and still sweeps", async () => {
     const f = await brigade();
-    await expect(openBrigade(f.deps, f.workspace, { fresh: true })).rejects.toThrow(
+    await expect(openBrigade(f.deps, { fresh: true })).rejects.toThrow(
       /^A Coordinator is running in t1\. Stop it with "hc kill t1", then run "brigade start --new" again\.$/,
     );
     expect(f.workspace.opened).toEqual([]);
@@ -286,31 +288,58 @@ describe("openBrigade", () => {
 });
 
 describe("openAgent", () => {
-  it("opens a Captain where it is and the Coordinator first, turning core keep off on each", async () => {
+  it("opens a Captain in its project's space and the Coordinator first, turning core keep off on each", async () => {
     const f = await brigade();
-    await openAgent(f.deps, f.workspace, "t2");
-    await openAgent(f.deps, f.workspace, "t1");
+    await openAgent(f.deps, "t2");
+    await openAgent(f.deps, "t1");
     expect(f.workspace.checks).toEqual([0, 1]);
-    expect(f.workspace.opened).toEqual([
-      { address: "t2", first: false },
-      { address: "t1", first: true },
-    ]);
+    expect(f.workspace.opened).toEqual([SHOP_CAPTAIN_TAB, COORDINATOR_TAB]);
     expect(f.terminals.keptOff).toEqual(["t2", "t1"]);
   });
 
   it("refuses a worker or an unknown terminal and opens nothing", async () => {
     const f = await brigade();
-    await expect(openAgent(f.deps, f.workspace, "t3")).rejects.toThrow(
-      /^t3 is not a running Coordinator or Captain\.$/,
-    );
-    await expect(openAgent(f.deps, f.workspace, "t9")).rejects.toThrow("t9 is not");
+    await expect(openAgent(f.deps, "t3")).rejects.toThrow(/^t3 is not a running Coordinator or Captain\.$/);
+    await expect(openAgent(f.deps, "t9")).rejects.toThrow("t9 is not");
     expect(f.workspace.opened).toEqual([]);
   });
 
   it("turns core keep off also when the tab fails to open", async () => {
     const f = await brigade();
     f.workspace.openFails.add("t2");
-    await expect(openAgent(f.deps, f.workspace, "t2")).rejects.toThrow(/^no tab for t2$/);
+    await expect(openAgent(f.deps, "t2")).rejects.toThrow(/^no tab for t2$/);
     expect(f.terminals.keptOff).toEqual(["t2"]);
+  });
+});
+
+describe("a new Captain's tab", () => {
+  const send = (f: ReturnType<typeof fakeDeps>) =>
+    sendToCaptain(f.deps, ctx({ role: "coordinator", terminal: "t9" }), { project: "shop", message: "Fix login" });
+
+  it("opens in the project's space, shows the owner's tab again, and turns core keep off", async () => {
+    const f = fakeDeps();
+    expect(await send(f)).toBe(
+      "Sent to the shop Captain, which was started for it. End your turn; its report arrives as a [brigade] message.",
+    );
+    expect(f.workspace.opened).toEqual([{ address: "t1", folder: "/repos/shop", first: false, back: true }]);
+    expect(f.terminals.keptOff).toEqual(["t1"]);
+  });
+
+  it("still runs and gets the request when its tab fails, and the reply says so", async () => {
+    const f = fakeDeps();
+    f.workspace.openFails.add("t1");
+    expect(await send(f)).toBe(
+      "Sent to the shop Captain, which was started for it. It runs, but its tab failed (no tab for t1). " +
+        'The owner can open it from the panel or with "brigade start". End your turn; its report arrives as a [brigade] message.',
+    );
+    expect(f.terminals.live.map((t) => t.address)).toEqual(["t1"]);
+    expect(f.terminals.keptOff).toEqual(["t1"]);
+  });
+
+  it("is not opened again for a Captain that already runs", async () => {
+    const f = fakeDeps();
+    await send(f);
+    await send(f);
+    expect(f.workspace.opened).toHaveLength(1);
   });
 });

@@ -38,6 +38,7 @@ export function buildDeps(config: BrigadeConfig, paths: Paths): Deps {
     folders: localFolders,
     coordinatorFolder: coordinatorFolder(paths),
     captainsFolder: path.join(paths.stateDir, "captains"),
+    workspace: buildWorkspace(paths),
   };
 }
 
@@ -55,12 +56,17 @@ export function buildHerdrApp(paths: Paths): HerdrApp {
   return new HerdrApp(herdrAppRunner(herdrAppBin(paths)));
 }
 
-/** Where brigade opens agents: a herdr-app space named Brigade, in the Coordinator's folder. */
-export function buildWorkspace(paths: Paths): Workspace {
-  return new HerdrAppWorkspace(herdrAppRunner(herdrAppBin(paths)), {
-    name: "Brigade",
-    folder: coordinatorFolder(paths),
-  });
+/**
+ * Where brigade opens agents: herdr-app. It is built on first use, so a missing herdr-app fails only the call that
+ * needs it, and the MCP server's other tools still work.
+ */
+function buildWorkspace(paths: Paths): Workspace {
+  let built: Workspace | null = null;
+  const workspace = (): Workspace => (built ??= new HerdrAppWorkspace(herdrAppRunner(herdrAppBin(paths))));
+  return {
+    check: () => workspace().check(),
+    open: (address, options) => workspace().open(address, options),
+  };
 }
 
 /** Deps with a config snapshot read now: each tool call gets its own, so a project added by one agent is seen by all. */

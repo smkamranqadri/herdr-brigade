@@ -15,6 +15,7 @@ import type {
   RepoFacts,
   HarnessLaunchRequest,
   LaunchContext,
+  OpenOptions,
   TerminalInfo,
   TerminalLaunch,
   TrustOutcome,
@@ -277,6 +278,7 @@ export interface Fakes {
   readonly repos: FakeRepos;
   readonly github: FakeGitHub;
   readonly folders: FakeFolders;
+  readonly workspace: FakeWorkspace;
 }
 
 /** Ids that count up across kinds: task-000001, note-000002, … */
@@ -299,9 +301,10 @@ const FIXED = {
 };
 
 /** A Workspace that records what it showed. */
-export class FakeWorkspace implements Workspace {
+class FakeWorkspace implements Workspace {
   readonly checks: number[] = [];
-  readonly opened: { address: string; first: boolean }[] = [];
+  /** Each open: the terminal, the place's folder, first, and returnToView. */
+  readonly opened: { address: string; folder: string; first: boolean; back: boolean }[] = [];
   checkError: Error | null = null;
   /** Terminals whose open fails. */
   readonly openFails = new Set<string>();
@@ -310,8 +313,8 @@ export class FakeWorkspace implements Workspace {
     this.checks.push(this.opened.length);
     return this.checkError ? Promise.reject(this.checkError) : Promise.resolve();
   }
-  open(address: string, { first }: { readonly first: boolean }): Promise<void> {
-    this.opened.push({ address, first });
+  open(address: string, { place, first, returnToView }: OpenOptions): Promise<void> {
+    this.opened.push({ address, folder: place.folder, first, back: returnToView });
     return this.openFails.has(address) ? Promise.reject(new Error(`no tab for ${address}`)) : Promise.resolve();
   }
 }
@@ -338,6 +341,7 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
     configStore: new FakeConfigStore(config),
     repos: new FakeRepos(),
     github: new FakeGitHub(),
+    workspace: new FakeWorkspace(),
   };
   const mcpContexts: LaunchContext[] = [];
   const eventsAtTrust: number[] = [];
