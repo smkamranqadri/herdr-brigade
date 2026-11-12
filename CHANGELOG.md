@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Role prompts, after a review of real brigade conversations: a worker answers every follow-up through a brigade tool, never as text in its terminal; a Captain ends its turn after `report` with no summary; the Coordinator names tasks that wait on you or stopped without a report at the start of each of your turns. Running agents pick this up when they restart.
 - `BRIGADE_INSTANCE` gives a brigade its own label value (default `main`), so a test run never sees or messages your real brigade. `npm run e2e` runs as `e2e` and no longer refuses while your brigade runs. Run `brigade mod install` again so the panel keeps showing yours.
 - The panel shows a Brigade logo instead of its fold button. The `brigade.toggle` key folds the column; the logo at the top of the rail unfolds it. Run `brigade mod install` again.
 - The Brigade space now holds only the Coordinator. Each Captain and worker gets its tab in its project's space: the first space whose folder is the repo, or a space brigade makes, named after the project. A new Captain gets its tab when it starts, and brigade then shows the tab you were on. Captain tabs already in the Brigade space stay until you close them.

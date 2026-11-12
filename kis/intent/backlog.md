@@ -2,6 +2,14 @@
 
 These items wait for the owner's decision.
 
+- **Nothing gets lost (next, from the 2026-11-12 review of real conversations).**
+  - `report` fails while the receiving agent shows a permission dialog ("typing would answer its dialog"), and the report is dropped. Queue it and deliver it when the dialog closes.
+  - A worker can end its turn with no brigade call, so its answer stays in its terminal. Brigade notices it (for example a Claude Stop hook) and reminds the worker. `list_tasks` shows "waiting on owner" and "idle, no report".
+  - Captains hit permission prompts on guessed paths. Show the worktree path in `list_tasks`, or let Captains read `~/.herdr/worktrees`.
+- **Work across task branches.** A Captain kept 12 jobs in one long task because a new task starts from the base branch, without the earlier task's files. Let `create_task` start from another task's branch, or merge locally when the owner wants no PR.
+- **create_project.** Brigade can't create a repo, so new repos were made through an unrelated project's Captain, whose workers then worked outside their worktrees.
+- **Coordinator context.** It reached 184k tokens in 40 hours. Its baseline (46k) includes MCP instructions and skills it never uses. Decide with the Coordinator item below.
+
 - **Coordinator: optional, or a fresh context per request.** The owner asked on 2026-11-12 whether the Coordinator is needed: Captains have their own tabs now, and the Coordinator's conversation grows with every request (another tool the owner uses runs one fresh run per message instead). Brigade's state lives in its event log and tools, so a fresh context per request could work. The owner talks to Captains directly for a few days first, then decides: drop the Coordinator, make it optional, or give it a fresh context per request.
   - Decide together with it: **questions go straight to the owner.** Today a worker's `ask_user` goes worker → Captain → Coordinator → owner and back, one model call per hop (the owner's report, 2026-11-12). Proposal: the question stays in the worker's tab, and the panel marks the task "waiting on you"; the owner answers there. The Captain gets a note and does not relay. A Captain asks its own questions in its own tab. Maybe a desktop notification when something waits on the owner.
 - **Close the Codex and pi MCP gaps.** Start Codex and pi Captains and workers with brigade's MCP server only, as Claude ones are. The owner chose docs only on 2026-11-11, because every role runs on Claude Code. Do this before a role moves to Codex or pi. Approach found on 2026-11-11 (no model calls):
