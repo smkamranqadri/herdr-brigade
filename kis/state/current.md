@@ -1,14 +1,11 @@
 # Current state
 
-Stamp: main 729fb38 67f55d5c6ed3
+Stamp: main 34bd30f 67f55d5c6ed3
 
-- Branch: `main`, in the repo root. No other worktrees. Fifteen commits are not pushed yet.
-- Task: phase 3b, the Brigade space (`kis/intent/plan-phase-3b.md`; reviewed twice by Codex, the last change waived by the owner). T0 to T7 and the live checks are done. Check 6 changed the plan: closing the space ends workers too (owner's choice).
+- Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
+- Task: none in progress. Phase 3b, the Brigade space, is done (`kis/intent/plan-phase-3b.md`) and synced to Reality.
 - Blocker: none. No test agents are running.
-- Found on 2026-11-12: a click on a task row under a Captain still peeks. This is by design in 3b (T6).
-- Next, in this order:
-  1. Plan the tabs work with KIS (owner's choices on 2026-11-11): a Captain gets a tab in the Brigade space when it starts, and brigade then shows the owner's tab again. A click on a worker row gives the worker a tab in the space whose folder is the project's repo, else in the Brigade space. If the owner does not like click tabs, workers get a tab when they start.
-  2. Sync KIS for 3b.
+- Next: plan the first backlog item, tabs for Captains and workers (`kis/intent/backlog.md`), with KIS. Then 3c, the TUI (`kis/intent/plan-phase-3.md`).
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 

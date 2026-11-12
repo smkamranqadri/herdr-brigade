@@ -1,6 +1,6 @@
 # Phase 3b plan: the Brigade space
 
-Status: scope approved by the owner on 2026-11-11. Part of `kis/intent/plan-phase-3.md`.
+Status: done 2026-11-12. Scope approved by the owner on 2026-11-11. Part of `kis/intent/plan-phase-3.md`.
 
 ## Goal
 

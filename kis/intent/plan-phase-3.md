@@ -1,6 +1,6 @@
 # Phase 3 plan: resume, a Brigade space, and a TUI
 
-Status: approved by the owner on 2026-11-11. Phase 3a is planned in detail below. Phases 3b and 3c get their own KIS plan and review before work starts.
+Status: approved by the owner on 2026-11-11. 3a is done (planned below). 3b is done (`kis/intent/plan-phase-3b.md`). 3c gets its own KIS plan and review before work starts.
 
 ## Goal
 

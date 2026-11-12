@@ -1,6 +1,12 @@
 # Backlog
 
-No phase is planned after phase 2. These items wait for the owner's decision.
+These items wait for the owner's decision. The first one is next.
+
+- **Tabs for Captains and workers.** The owner's choices on 2026-11-11, after 3b:
+  - A Captain gets a tab in the Brigade space when it starts. Brigade then shows the tab the owner was on.
+  - A click on a worker row in the panel gives the worker a tab. The tab goes in the space whose folder is the project's repo, else in the Brigade space.
+  - If the owner does not like click tabs, workers get a tab when they start, and brigade shows the owner's tab again.
+  - A task row click still peeks today (3b T6).
 
 - **Close the Codex and pi MCP gaps.** Start Codex and pi Captains and workers with brigade's MCP server only, as Claude ones are. The owner chose docs only on 2026-11-11, because every role runs on Claude Code. Do this before a role moves to Codex or pi. Approach found on 2026-11-11 (no model calls):
   - Codex 0.167: `-c mcp_servers.<name>.enabled=false` turns off one server. A new `mcp_servers` table does not replace the owner's, because Codex merges the two. Take the names from `codex mcp list --json`. If that command fails, refuse to start the agent. `-c features.{apps,plugins,computer_use,browser_use,in_app_browser}=false` removes plugin servers such as computer use. `--ignore-user-config` is not an option: only `codex exec` has it, and it would also drop the owner's Codex hooks.
