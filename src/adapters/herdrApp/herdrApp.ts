@@ -18,7 +18,7 @@ const FOCUS_RETRY_MS = 500;
  * The mod's files, copied as they are, in this order. herdr-app reloads the mod when main.js is
  * saved, so main.js goes last, after config.js and the files it imports.
  */
-const MOD_FILES = ["model.js", "mod.json", "brigade.svg", "panel.svg", "logo.svg", "main.js"];
+const MOD_FILES = ["model.js", "mod.json", "brigade.svg", "logo.svg", "main.js"];
 
 export function herdrAppRunner(bin: string): HerdrAppRunner {
   return (args) =>
