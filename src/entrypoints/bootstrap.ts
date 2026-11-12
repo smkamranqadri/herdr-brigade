@@ -41,6 +41,7 @@ export function buildDeps(config: BrigadeConfig, paths: Paths): Deps {
     captainsFolder: path.join(paths.stateDir, "captains"),
     workspace: buildWorkspace(paths),
     locks: new FileLocks(path.join(paths.stateDir, "locks")),
+    instance: paths.instance,
   };
 }
 

@@ -288,7 +288,7 @@ export class HerdrAppWorkspace implements Workspace {
 export async function installMod(
   source: string,
   herdrAppHome: string,
-  where: { stateDir: string; configFile: string; start: readonly string[]; open: readonly string[] },
+  where: { stateDir: string; configFile: string; instance: string; start: readonly string[]; open: readonly string[] },
 ): Promise<string> {
   const target = path.join(herdrAppHome, "mods", MOD_NAME);
   await mkdir(target, { recursive: true });
@@ -296,6 +296,8 @@ export async function installMod(
     `// Written by "brigade mod install"; run it again to change.`,
     `export const STATE_DIR = ${JSON.stringify(where.stateDir)};`,
     `export const CONFIG_FILE = ${JSON.stringify(where.configFile)};`,
+    "// The value of the `brigade` label on this brigade's terminals.",
+    `export const INSTANCE = ${JSON.stringify(where.instance)};`,
     "// The panel's Start button runs this: `brigade start` for this same config and state.",
     `export const START = ${JSON.stringify(where.start)};`,
     "// A click on an agent runs this with its terminal's address or its task's id: `brigade open <target>`.",

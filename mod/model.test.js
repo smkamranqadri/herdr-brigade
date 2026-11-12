@@ -91,6 +91,12 @@ describe("deriveTasks", () => {
 describe("buildModel", () => {
   const m = buildModel(TERMINALS, EVENTS);
 
+  it("counts only the terminals of its own instance", () => {
+    const other = buildModel(TERMINALS, EVENTS, [], "e2e");
+    expect(other.coordinator).toBeNull();
+    expect(other.projects.every((p) => p.captain === null)).toBe(true);
+  });
+
   it("shows the Coordinator and each project's Captain from the brigade's terminals only", () => {
     expect(m.coordinator).toEqual({ address: "t1", status: "idle", harness: "claude" });
     expect(m.projects.map((p) => [p.name, p.captain])).toEqual([

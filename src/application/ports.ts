@@ -322,4 +322,6 @@ export interface Deps {
   /** Where the owner sees agents. */
   readonly workspace: Workspace;
   readonly locks: Locks;
+  /** The value of every brigade terminal's `brigade` label; "main" unless a test run sets its own. */
+  readonly instance: string;
 }

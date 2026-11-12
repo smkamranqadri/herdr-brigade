@@ -10,6 +10,8 @@ import * as config from "./config.js";
 import { PANEL_ID, buildModel, configProjects, isRail, panelWidth, parseEvents, toggledWidth } from "./model.js";
 
 const { CONFIG_FILE, START, STATE_DIR } = config;
+/** The `brigade` label value of this brigade's terminals; "main" in a config.js from before it. */
+const INSTANCE = config.INSTANCE ?? "main";
 /** `brigade open` for this same config and state, without its target; null in a config.js from before it. */
 const OPEN = config.OPEN ?? null;
 const EVENTS_FILE = `${STATE_DIR}/events.jsonl`;
@@ -357,7 +359,7 @@ export default class Brigade extends View {
 
   render() {
     const t = theme();
-    const m = buildModel(terminals(), this.events, this.projects);
+    const m = buildModel(terminals(), this.events, this.projects, INSTANCE);
     const px = panelWidth(layout());
     if (isRail(px)) return this.rail(m, t);
     const label = (text) => div().text_size(11).text_color(t.dim).child(text);

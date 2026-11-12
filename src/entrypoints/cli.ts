@@ -86,12 +86,14 @@ async function modInstall(paths: Paths): Promise<string> {
     `BRIGADE_CONFIG=${paths.configFile}`,
     `BRIGADE_STATE=${paths.stateDir}`,
     `BRIGADE_WORKTREES=${paths.worktreesRoot}`,
+    `BRIGADE_INSTANCE=${paths.instance}`,
     paths.node,
     paths.cli,
   ];
   const target = await installMod(paths.modSource, paths.herdrAppHome, {
     stateDir: paths.stateDir,
     configFile: paths.configFile,
+    instance: paths.instance,
     start: [...brigade, "start"],
     open: [...brigade, "open"],
   });

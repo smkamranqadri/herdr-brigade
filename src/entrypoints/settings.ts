@@ -16,6 +16,7 @@ const ENV = {
   state: "BRIGADE_STATE",
   hc: "BRIGADE_HC",
   worktrees: "BRIGADE_WORKTREES",
+  instance: "BRIGADE_INSTANCE",
   terminal: "HC_TERMINAL_ID",
 } as const;
 
@@ -37,6 +38,17 @@ export interface Paths {
   readonly modSource: string;
   /** Where find_repo looks when the config names no repoRoots. */
   readonly defaultRepoRoots: readonly string[];
+  /** The value of every terminal's `brigade` label: a test run with its own sees no other brigade's agents. */
+  readonly instance: string;
+}
+
+const DEFAULT_INSTANCE = "main";
+
+function readInstance(env: Env): string {
+  const instance = env[ENV.instance] ?? DEFAULT_INSTANCE;
+  if (!/^[a-z0-9-]{1,32}$/.test(instance))
+    throw new Error(`${ENV.instance} must be 1-32 of a-z, 0-9 and -, not "${instance}"`);
+  return instance;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -74,6 +86,7 @@ export function readPaths(env: Env): Paths {
     herdrApp: onPath("herdr-app", env),
     modSource: path.join(ROOT, "mod"),
     defaultRepoRoots: [path.join(home, "Repositories")],
+    instance: readInstance(env),
   };
 }
 
@@ -85,6 +98,7 @@ export function mcpEnv(context: LaunchContext, paths: Paths): Record<string, str
     [ENV.state]: paths.stateDir,
     [ENV.hc]: paths.hc,
     [ENV.worktrees]: paths.worktreesRoot,
+    [ENV.instance]: paths.instance,
   };
   if (context.project) env[ENV.project] = context.project;
   if (context.task) env[ENV.task] = context.task;

@@ -24,11 +24,13 @@ case $HARNESS in
   *) echo "harness must be claude, codex or pi" >&2; exit 2 ;;
 esac
 
-# Never touch a real brigade: refuse to run while any brigade agent is live. An hc failure stops the script here.
-running=$(hc ls --json --label brigade=main \
+# A run is its own brigade instance (label brigade=e2e), so it never sees or messages the owner's brigade (main).
+# Refuse while an earlier e2e run's agents are still live. An hc failure stops the script here.
+export BRIGADE_INSTANCE=e2e
+running=$(hc ls --json --label brigade=e2e \
   | python3 -I -c 'import json,sys; d=json.load(sys.stdin); t=d["terminals"] if isinstance(d,dict) else d; print(len(t))')
 if [ "$running" != 0 ]; then
-  echo "brigade agents are already running; remove them first (hc ls --label brigade=main)" >&2
+  echo "an earlier e2e run's agents are still running; remove them first (hc ls --label brigade=e2e)" >&2
   exit 1
 fi
 

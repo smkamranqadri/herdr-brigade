@@ -376,7 +376,7 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
     mcpContexts.push(context);
     return { command: "node", args: ["brigade", "mcp"], env: { ROLE: context.role } };
   };
-  const deps: Deps = { config, ...ports, ...FIXED, ids: countingIds(), mcpFor };
+  const deps: Deps = { config, ...ports, ...FIXED, ids: countingIds(), mcpFor, instance: "main" };
   return { deps, ...ports, mcpContexts, eventsAtTrust, launchesAtEnsure };
 }
 

@@ -142,11 +142,11 @@ export function eventText(e) {
 const agentRow = (t) => ({ address: t.address, status: t.status ?? null, harness: t.labels.harness ?? "" });
 
 /**
- * The panel's model. `terminals` is herdr's terminals() list; only those labelled brigade=main count.
+ * The panel's model. `terminals` is herdr's terminals() list; only those labelled brigade=<instance> count.
  * A task waits on the owner when its worker asked something, or when its terminal is blocked on a prompt.
  */
-export function buildModel(terminals, events, configured = []) {
-  const brigade = terminals.filter((t) => t.labels?.brigade === "main");
+export function buildModel(terminals, events, configured = [], instance = "main") {
+  const brigade = terminals.filter((t) => t.labels?.brigade === instance);
   const byTask = new Map(brigade.filter((t) => t.labels.task).map((t) => [t.labels.task, t]));
   const prs = derivePrs(events);
   const tasks = deriveTasks(events).map((task) => {

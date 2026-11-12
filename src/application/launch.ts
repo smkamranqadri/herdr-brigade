@@ -3,9 +3,8 @@ import { BrigadeError } from "../domain/errors.ts";
 import type { NewEvent } from "../domain/events.ts";
 import type { Deps, LaunchContext, TerminalInfo, TerminalLaunch } from "./ports.ts";
 
-/** The label every brigade terminal carries, so brigade and the mod can find them. */
+/** The label every brigade terminal carries, with the instance as its value, so brigade and the mod find them. */
 const BRIGADE_LABEL = "brigade";
-const BRIGADE_VALUE = "main";
 
 export const terminalName = {
   coordinator: () => "bg-coordinator",
@@ -73,20 +72,20 @@ function notReady(role: string, address: string): BrigadeError {
 }
 
 /** The labels brigade and the mod find an agent's terminal by. */
-function labelsFor(a: AgentLaunch): Record<string, string> {
+function labelsFor(instance: string, a: AgentLaunch): Record<string, string> {
   const { role, project, task, title } = a.context;
-  const labels: Record<string, string> = { [BRIGADE_LABEL]: BRIGADE_VALUE, role, harness: a.spec.harness };
+  const labels: Record<string, string> = { [BRIGADE_LABEL]: instance, role, harness: a.spec.harness };
   if (project) labels.project = project;
   if (task) labels.task = task;
   if (title) labels.title = title;
   return labels;
 }
 
-function terminalFor(a: AgentLaunch, argv: readonly string[]): TerminalLaunch {
+function terminalFor(instance: string, a: AgentLaunch, argv: readonly string[]): TerminalLaunch {
   const { name, cwd, context } = a;
   // A Captain ends with the Coordinator; a worker keeps running, so a closed space does not lose its work.
   const outliveParent = context.role === "worker";
-  return { name, cwd, labels: labelsFor(a), parent: context.parent, outliveParent, argv };
+  return { name, cwd, labels: labelsFor(instance, a), parent: context.parent, outliveParent, argv };
 }
 
 /** One start. On no_session or timeout it stops there: nothing was typed in, so the caller decides. */
@@ -108,7 +107,7 @@ async function launchOnce(
     readDirs: a.readDirs ?? [],
     resume: a.resume ?? false,
   });
-  const address = await deps.terminals.launch(terminalFor(a, plan.argv));
+  const address = await deps.terminals.launch(terminalFor(deps.instance, a, plan.argv));
   await record(deps, started(address));
   const trust = plan.trust ? await deps.terminals.answerTrust(address, plan.trust) : "ready";
   if (trust === "timeout" || trust === "no_session") return { address, result: trust };
@@ -122,5 +121,5 @@ export async function record(deps: Deps, event: NewEvent): Promise<void> {
 
 /** Live brigade terminals with all of these labels. */
 export async function findTerminals(deps: Deps, match: Readonly<Record<string, string>>): Promise<TerminalInfo[]> {
-  return deps.terminals.find({ [BRIGADE_LABEL]: BRIGADE_VALUE, ...match });
+  return deps.terminals.find({ [BRIGADE_LABEL]: deps.instance, ...match });
 }

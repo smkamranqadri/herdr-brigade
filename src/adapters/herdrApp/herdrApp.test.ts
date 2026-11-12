@@ -30,6 +30,7 @@ describe("installMod", () => {
     const target = await installMod(source, home, {
       stateDir: '/state/with "quotes"',
       configFile: "/c/config.json",
+      instance: "e2e",
       start: [...brigade, "start"],
       open: [...brigade, "open"],
     });
@@ -47,6 +48,8 @@ describe("installMod", () => {
         '// Written by "brigade mod install"; run it again to change.',
         'export const STATE_DIR = "/state/with \\"quotes\\"";',
         'export const CONFIG_FILE = "/c/config.json";',
+        "// The value of the `brigade` label on this brigade's terminals.",
+        'export const INSTANCE = "e2e";',
         "// The panel's Start button runs this: `brigade start` for this same config and state.",
         'export const START = ["env","BRIGADE_STATE=/s","/bin/node","/app/cli.ts","start"];',
         "// A click on an agent runs this with its terminal's address or its task's id: `brigade open <target>`.",
@@ -64,7 +67,7 @@ describe("installMod", () => {
     const target = path.join(home, "mods", "brigade");
     // A folder named main.js makes its copy fail, so the files written before it stay.
     await mkdir(path.join(target, "main.js"), { recursive: true });
-    const where = { stateDir: "/s", configFile: "/c", start: ["start"], open: ["open"] };
+    const where = { stateDir: "/s", configFile: "/c", instance: "main", start: ["start"], open: ["open"] };
     await expect(installMod(source, home, where)).rejects.toThrow();
     expect((await readdir(target)).sort()).toEqual([
       "brigade.svg",

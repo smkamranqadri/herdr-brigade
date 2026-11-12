@@ -232,6 +232,22 @@ async function brigade() {
 const COORDINATOR_TAB = { address: "t1", folder: "/state/coordinator", first: true, back: false };
 const SHOP_CAPTAIN_TAB = { address: "t2", folder: "/repos/shop", first: false, back: false };
 
+describe("brigade instances", () => {
+  it("labels terminals with its own instance, and does not see another instance's Coordinator", async () => {
+    const f = fakeDeps();
+    f.terminals.live.push({
+      address: "t50",
+      name: "bg-coordinator",
+      labels: { brigade: "main", role: "coordinator", harness: "claude" },
+      status: null,
+    });
+    const deps = { ...f.deps, instance: "e2e" };
+    expect(await startCoordinator(deps)).toEqual({ address: "t1", started: true });
+    expect(f.terminals.launched[0]?.labels).toMatchObject({ brigade: "e2e", role: "coordinator" });
+    expect(await startCoordinator(f.deps)).toEqual({ address: "t50", started: false });
+  });
+});
+
 describe("openBrigade", () => {
   it("starts the Coordinator, opens it first in the Brigade space, and turns core keep off on it", async () => {
     const f = fakeDeps();
