@@ -10,9 +10,9 @@ Open the panel in one of these ways. None is needed for brigade itself: the Coor
   { "id": "brigade", "type": "block", "size": { "px": 368 }, "min": 40, "max": 560, "content": { "mod": "brigade" } }
   ```
 
-  Keep the id `brigade`: the panel's fold icon resizes the block with that id. The icon at the top right folds the column to a 44 px rail, as the left sidebar's icon does, and the rail keeps the brigade in view: the Coordinator, a letter for each project with its Captain's status, and a dot for each open task. A click on any of them opens that agent, and hovering names it. Dragging the edge below 160 px folds it too. To fold it with a key, add `"super-alt-b": "brigade.toggle"` to the `global` section of `keys.json` (pick another key if your window manager uses that one).
+  Keep the id `brigade`: the panel folds the block with that id. The `brigade.toggle` key folds the column to a 44 px rail, as the left sidebar folds, and the Brigade logo at the top of the rail unfolds it. The rail keeps the brigade in view: the Coordinator, a letter for each project with its Captain's status, and a dot for each open task. A click on any of them opens that agent, and hovering names it. Dragging the edge below 160 px folds it too. To set the key, add `"super-alt-b": "brigade.toggle"` to the `global` section of `keys.json` (pick another key if your window manager uses that one).
 
-- **A window:** `brigade panel` (it runs `herdr-app do mod.open --name brigade`; run it again to close). A window has no column, so it has no fold icon.
+- **A window:** `brigade panel` (it runs `herdr-app do mod.open --name brigade`; run it again to close). A window has no column, so it does not fold.
 - **A button in the side panel stack, beside Automations.** Avoid this one: herdr-app remembers the stack's shown child per space, so the panel goes away when you switch spaces. It also needs the `auto-tabs` mod and two edits to your own herdr-app config, which `brigade mod install` does not make:
   1. In your layout, add `{ "id": "brigade", "type": "block", "content": { "mod": "brigade" } }` to the children of the `panel-body` stack, after `automations`.
   2. In `mods/auto-tabs/main.js`, add `"brigade"` to the `enabled` list after `"automations"`, and add `.child(panelButton("brigade", "Brigade", "mods/brigade/brigade.svg"))` after the Automations button.

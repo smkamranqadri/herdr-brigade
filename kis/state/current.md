@@ -1,11 +1,11 @@
 # Current state
 
-Stamp: main ebc1a49 a2d77ad791b0
+Stamp: main 0e30375 a2d77ad791b0
 
 - Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
 - Task: none in progress. Project spaces and worker resume (`kis/intent/plan-tabs.md`) are done and synced to Reality.
 - Blocker: none. No test agents are running.
-- Next: plan 3c, the brigade TUI in a pane beside the Coordinator (`kis/intent/plan-phase-3.md`). The first decision is a TUI library (a new dependency) or plain terminal codes.
+- Next: the owner uses the brigade with the panel as a column of the `estro` layout (added on 2026-11-12; backup `estro.json.bak-brigade-20261112`). 3c, the TUI, is pinned.
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 

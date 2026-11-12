@@ -23,7 +23,7 @@ describe("HerdrApp", () => {
 describe("installMod", () => {
   it("copies the mod's files into mods/brigade and writes its state folder into config.js", async () => {
     const source = await mkdtemp(path.join(tmpdir(), "brigade-mod-src-"));
-    for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg", "model.test.js"])
+    for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg", "logo.svg", "model.test.js"])
       await writeFile(path.join(source, f), f);
     const home = await mkdtemp(path.join(tmpdir(), "brigade-herdr-home-"));
     const brigade = ["env", "BRIGADE_STATE=/s", "/bin/node", "/app/cli.ts"];
@@ -37,6 +37,7 @@ describe("installMod", () => {
     expect((await readdir(target)).sort()).toEqual([
       "brigade.svg",
       "config.js",
+      "logo.svg",
       "main.js",
       "mod.json",
       "model.js",
@@ -58,7 +59,7 @@ describe("installMod", () => {
 
   it("copies main.js last, so herdr-app reloads the mod with the new config.js", async () => {
     const source = await mkdtemp(path.join(tmpdir(), "brigade-mod-src-"));
-    for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg"])
+    for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg", "logo.svg"])
       await writeFile(path.join(source, f), f);
     const home = await mkdtemp(path.join(tmpdir(), "brigade-herdr-home-"));
     const target = path.join(home, "mods", "brigade");
@@ -69,6 +70,7 @@ describe("installMod", () => {
     expect((await readdir(target)).sort()).toEqual([
       "brigade.svg",
       "config.js",
+      "logo.svg",
       "main.js",
       "mod.json",
       "model.js",

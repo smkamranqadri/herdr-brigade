@@ -1,7 +1,7 @@
 // The Brigade panel for herdr-app: the Coordinator, each project's Captain and tasks with live status, and the latest
 // events. A click on an agent opens its tab (`brigade open`): the Coordinator's in the Brigade space, a Captain's or a
 // task's worker in the project's space. A task whose worker has ended is resumed first. It changes nothing else.
-// In its own layout column, an icon (or the "brigade.toggle" key) folds it to a rail, as the left sidebar does.
+// In its own layout column, the "brigade.toggle" key folds it to a rail, and the logo at the rail's top unfolds it.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, layout, nextCommand, terminals, theme, run, readTextFile, setShared, shared, watchFolder } from "herdr";
@@ -62,20 +62,23 @@ export default class Brigade extends View {
     run("layout.resize", { id: PANEL_ID, px: toggledWidth(px, shared(WIDTH_KEY)) });
   }
 
-  toggleButton(t, folded) {
-    return div()
-      .id("panel-toggle")
+  /** The Brigade logo. In the rail it unfolds the column; in the full panel it only marks the title. */
+  logo(t, unfolds) {
+    const mark = div()
       .size(26)
       .flex_none()
       .flex()
       .items_center()
       .justify_center()
       .rounded(6)
-      .text_color(t.muted)
-      .hover((s) => s.bg(t.hover).text_color(t.foreground))
-      .tooltip(folded ? "Show Brigade" : "Hide Brigade")
-      .on_click(() => this.toggle())
-      .child(svg("mods/brigade/panel.svg").size(15));
+      .text_color(t.accent)
+      .child(svg("mods/brigade/logo.svg").size(17));
+    if (!unfolds) return mark;
+    return mark
+      .id("brigade-logo")
+      .hover((s) => s.bg(t.hover))
+      .tooltip("Show Brigade")
+      .on_click(() => this.toggle());
   }
 
   /**
@@ -176,7 +179,7 @@ export default class Brigade extends View {
       .items_center()
       .text_size(12)
       .overflow_y_scrollbar()
-      .child(this.toggleButton(t, true))
+      .child(this.logo(t, true))
       .child(coordinator)
       .child(div().w(24).h(1).flex_none().bg(t.border))
       .children(m.projects.map(project));
@@ -373,9 +376,9 @@ export default class Brigade extends View {
           .child(
             h_flex()
               .items_center()
-              .justify_between()
-              .child(div().text_size(15).font_semibold().child("Brigade"))
-              .when(px !== null, (el) => el.child(this.toggleButton(t, false))),
+              .gap(6)
+              .child(this.logo(t, false))
+              .child(div().text_size(15).font_semibold().child("Brigade")),
           )
           .child(
             h_flex()

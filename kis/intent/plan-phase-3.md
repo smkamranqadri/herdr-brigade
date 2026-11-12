@@ -1,6 +1,6 @@
 # Phase 3 plan: resume, a Brigade space, and a TUI
 
-Status: approved by the owner on 2026-11-11. 3a is done (planned below). 3b is done (`kis/intent/plan-phase-3b.md`), and so are project spaces and worker resume (`kis/intent/plan-tabs.md`). 3c gets its own KIS plan and review before work starts.
+Status: approved by the owner on 2026-11-11. 3a is done (planned below). 3b is done (`kis/intent/plan-phase-3b.md`), and so are project spaces and worker resume (`kis/intent/plan-tabs.md`). 3c is pinned by the owner on 2026-11-12: the panel stays, as a column of the owner's layout, while the owner checks the value of the brigade itself. Its open question is plain terminal codes or a TUI library. 3c gets its own KIS plan and review before work starts.
 
 ## Goal
 
