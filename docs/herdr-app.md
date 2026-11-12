@@ -40,3 +40,16 @@ Probed with herdr-app 0.1.15 and hc 0.1.20, with `sleep` terminals in a `brigade
 Why core keep matters: with keep on, hc puts a shell where a program was lost to a reboot. The owner's revive mod then resumes the agent in that shell with only the flags it carries, so a brigade agent would come back without its tool limits.
 
 Not probed: what herdr-app and hc do with kept terminals after a window restart or a reboot.
+
+### Showing the owner's view again (probed 2026-11-12)
+
+Probed with herdr-app 0.1.15 and hc 0.1.20, with a `sleep` terminal in a `brigade-probe` space, from the owner's space `herdr-mods`. These facts are for `kis/intent/plan-tabs.md`.
+
+| Command | What it did |
+| --- | --- |
+| `herdr-app ls` | `active: true` marks the shown space, and in each space its shown tab. The marks matched each step below. |
+| `space.select` then `tab.select` with the earlier ids | Showed the earlier space and tab again. |
+| `tab.select` alone, with a tab of another space | Showed that tab and its space. One call is enough. |
+| `space.select` of a space not shown, then `terminal.keep` | Made the tab in that space and showed it. Then `tab.select` showed the earlier view again. |
+| `tab.select` or `space.select` with an id that does not exist | Exited 1 with `{"error": "no such tab"}` or `{"error": "no such space"}`. The view did not change. |
+| `space.close` of the probe space | Removed it and ended both its terminals. The view stayed on the owner's tab. |

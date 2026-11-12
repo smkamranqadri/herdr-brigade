@@ -3,14 +3,15 @@
 Stamp: main 4414807 67f55d5c6ed3
 
 - Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
-- Task: tabs for Captains and workers, and worker resume (`kis/intent/plan-tabs.md`). Scope approved and reviewed by Codex on 2026-11-12. No task started.
+- Task: `kis/intent/plan-tabs.md` (Phase mode; reviewed by Codex on 2026-11-12). T0 is done. Now T1 to T4: project spaces and Captain tabs.
 - Blocker: none. No test agents are running.
-- Next: T0, a live probe of view restore in herdr-app (no model calls; the owner approves each window command). Then 3c, the TUI (`kis/intent/plan-phase-3.md`).
+- Next: T1 to T4, then T5 to T9. Live checks need the owner's approval of the model first.
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 
 ## Proof
 
+- plan-tabs T0 on 2026-11-12 (herdr-app 0.1.15, hc 0.1.20), results in `docs/herdr-app.md`: `space.select` and `tab.select` showed the owner's earlier view again, and `tab.select` alone also switches the space. A tab was made in a space that was not shown. Missing ids exit 1 and leave the view. The probe space and both its terminals are gone. Checked by `ls` marks only, not by the owner's eye.
 - `installMod` order on 2026-11-12: `npm run gate` passed (288 tests, 97.99% of statements, suppressions 9, 0 vulnerabilities). 2 mutations (`main.js` first again, `config.js` written after the copies) each failed the new test; the file was restored byte for byte. Live in the owner's window: after `brigade mod install`, `config.js` was written first and `main.js` last, and a click on a new kis-skill Captain (started by a Coordinator request, no tab) opened its tab.
 - 3b live checks on 2026-11-11 (`docs/e2e-runs.md`, run `run-resume-claude-20261111-221605`, `claude-sonnet-5-5` low, 2 model calls): checks 1 to 5 and 7 passed. Check 6 found that closing the space ends workers too; the owner accepted that. No test terminal is left running.
 - 3b T7 on 2026-11-11: README, CHANGELOG, `docs/decisions.md`, `docs/architecture.md` and `docs/herdr-app.md` updated; no stale peek claims left (grep). `npm run gate` passed (287 tests).
