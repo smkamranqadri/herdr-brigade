@@ -256,10 +256,23 @@ describe("HerdrAppWorkspace.open", () => {
     expect(slow.calls.filter((c) => c[1] === "terminal.keep")).toHaveLength(21);
   });
 
+  it("finds the terminal's tab when keep gives no tab id, as when another open kept it a moment ago", async () => {
+    const empty = space("sp-b", "Brigade", "/state/coordinator", []);
+    const kept = space("sp-b", "Brigade", "/state/coordinator", [{ id: "tb-c", terminals: ["t5"] }]);
+    const { ws, calls } = workspace({
+      ls: [ls(empty), ls(kept)],
+      "terminal.keep": '{"pending":false,"terminal":"t5"}',
+    });
+    await ws.open("t5", inBrigade(false));
+    expect(calls.map((c) => c[1] ?? c[0])).toEqual(["ls", "space.select", "terminal.keep", "ls"]);
+  });
+
   it("gives up after 10 seconds when ls never lists the new tab", async () => {
     const empty = space("sp-b", "Brigade", "/state/coordinator", []);
     const { ws, calls } = workspace({ ls: ls(empty), "terminal.keep": '{"tab":"tb-c"}' });
-    await expect(ws.open("t5", inBrigade(false))).rejects.toThrow(/^herdr-app does not list the new tab tb-c$/);
+    await expect(ws.open("t5", inBrigade(false))).rejects.toThrow(
+      /^herdr-app lists no tab for t5 after terminal\.keep$/,
+    );
     expect(calls.filter((c) => c[0] === "ls")).toHaveLength(22);
   });
 
@@ -274,9 +287,9 @@ describe("HerdrAppWorkspace.open", () => {
       /^herdr-app space.new returned no space$/,
     );
     const empty = space("sp-b", "Brigade", "/state/coordinator", []);
-    await expect(
-      workspace({ ls: ls(empty), "terminal.keep": '{"pending":true}' }).ws.open("t5", inBrigade(false)),
-    ).rejects.toThrow(/^herdr-app terminal.keep returned no tab for t5$/);
+    await expect(workspace({ ls: ls(empty), "terminal.keep": "null" }).ws.open("t5", inBrigade(false))).rejects.toThrow(
+      /^herdr-app terminal\.keep returned no object$/,
+    );
   });
 });
 

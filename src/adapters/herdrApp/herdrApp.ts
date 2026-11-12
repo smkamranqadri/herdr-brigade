@@ -199,13 +199,14 @@ export class HerdrAppWorkspace implements Workspace {
     if (found) return this.showFound(found, place, first);
     const { spaceId, shellTab } = await this.enterSpace(layout, place);
     const tab = await this.keep(address);
-    const placed = await this.waitForTab(tab);
+    // No tab id: another brigade process kept this terminal a moment ago. Its tab is the one holding the terminal.
+    const placed = await this.waitForTab(tab ? (t) => t.id === tab : (t) => t.terminals.includes(address), address);
     if (placed.space.id !== spaceId)
       throw new BrigadeError(
         `herdr-app put the tab for ${address} in the space "${placed.space.name}", not in "${place.name}". ` +
           "Brigade moved nothing. Close that tab and try again.",
       );
-    if (first && placed.index !== 1) await this.do("tab.move", { id: tab, index: "1" });
+    if (first && placed.index !== 1) await this.do("tab.move", { id: placed.tab.id, index: "1" });
     // Only now: a space whose last tab closes is removed.
     if (shellTab) await this.do("tab.close", { id: shellTab, confirmed: "true" });
   }
@@ -257,20 +258,19 @@ export class HerdrAppWorkspace implements Workspace {
     }
   }
 
-  private async keep(address: string): Promise<string> {
+  /** The new tab's id, or null when herdr-app gave none. */
+  private async keep(address: string): Promise<string | null> {
     const out = await untilSeen(this.c, ["do", "terminal.keep", "--terminal", address, "--place", "tab"]);
-    const tab = text(parseObject(out, "terminal.keep").tab);
-    if (!tab) throw new Error(`herdr-app terminal.keep returned no tab for ${address}`);
-    return tab;
+    return text(parseObject(out, "terminal.keep").tab) || null;
   }
 
   /** terminal.keep answers before ls lists the new tab. */
-  private async waitForTab(tab: string): Promise<Place> {
+  private async waitForTab(match: (tab: LsTab) => boolean, address: string): Promise<Place> {
     const until = this.c.now() + FOCUS_WAIT_MS;
     for (;;) {
-      const place = findPlace(await this.layout(), (t) => t.id === tab);
+      const place = findPlace(await this.layout(), match);
       if (place) return place;
-      if (this.c.now() >= until) throw new Error(`herdr-app does not list the new tab ${tab}`);
+      if (this.c.now() >= until) throw new Error(`herdr-app lists no tab for ${address} after terminal.keep`);
       await this.c.sleep(FOCUS_RETRY_MS);
     }
   }
