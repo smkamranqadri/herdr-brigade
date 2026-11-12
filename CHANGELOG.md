@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- `brigade start` opens a space named Brigade in herdr-app, with the Coordinator in tab 1 and a tab for each running Captain, instead of showing the Coordinator over your tab. In the panel, a click on the Coordinator or a Captain opens its tab (`brigade open <address>`); a task still shows its worker over your tab. Run `brigade mod install` again to get the new clicks.
+- The Brigade space now holds only the Coordinator. Each Captain and worker gets its tab in its project's space: the first space whose folder is the repo, or a space brigade makes, named after the project. A new Captain gets its tab when it starts, and brigade then shows the tab you were on. Captain tabs already in the Brigade space stay until you close them.
+- A worker whose tab or space was closed can resume. A click on its task in the panel, or `brigade open <task id>`, resumes it in its worktree and opens its tab. A Captain's follow-up to it also resumes it. It keeps its task's model, limits and repo. Run `brigade mod install` again to get the new task clicks.
+- The panel's rail opens Captains again: a click on a project's cell did nothing.
+- `brigade start` opens a space named Brigade in herdr-app, with the Coordinator in tab 1 and a tab for each running Captain, instead of showing the Coordinator over your tab. In the panel, a click on the Coordinator or a Captain opens its tab (`brigade open <address>`). Run `brigade mod install` again to get the new clicks.
 - A Captain now ends when the Coordinator ends. Closing the Brigade space or the Coordinator's tab also ends the workers, since herdr-app ends a terminal's sub-agents with it; a worker's worktree and commits stay. Captains that run now keep the old behavior until they restart: stop each one once with `hc kill <address>`.
 - Brigade turns hc's core keep off on its terminals. herdr-app turns it on when it gives a terminal a tab, and after a reboot it would leave a shell where tools can restart an agent without brigade's limits.
 - The Coordinator and the Captains keep their conversations. After a stop or a reboot, each start continues the agent's last conversation, on Claude Code, Codex or pi. `brigade start --new` starts the Coordinator in a new one. Each Captain now runs in a folder of its own and reads its repo from there, so its first start after this update is a new conversation.

@@ -58,7 +58,7 @@ The Brigade space holds only the Coordinator, so the owner finds it at once. Eac
 - [x] **T6 Open a task.** `brigade open <task id>` (`src/entrypoints/cli.ts`) shows the worker's tab in the project space, and resumes the worker first when it has ended. Brigade stays on that tab. Coordinator and Captain addresses work as now.
 - [x] **T7 Follow-up.** `sendToTask` (`src/application/captain.ts`) resumes an ended worker, then sends. Its reply says the worker was resumed.
 - [ ] **T8 Panel.** In `mod/main.js`, a click on a task row or rail cell runs `brigade open <task id>`, also when the worker has ended. A task open may take longer than the 30 s limit for other opens, so it gets its own limit, and repeat clicks on the same row are ignored while it runs. Peek stays only as the fallback for a `config.js` from before `OPEN`. Fix the rail's `open` name, which a task list of the same name hides, and check the rail clicks in the window. The owner runs `brigade mod install` again.
-- [ ] **T9 Docs.** `README.md`, `CHANGELOG.md` (Unreleased), `docs/herdr-app.md`, `docs/decisions.md` (project spaces, worker resume by folder, and the Codex and pi resume risk), `SECURITY.md` (that risk as a known limit) and the Captain prompt, if it names the old "start a new task" answer.
+- [x] **T9 Docs.** `README.md`, `CHANGELOG.md` (Unreleased), `docs/herdr-app.md`, `docs/decisions.md` (project spaces, worker resume by folder, and the Codex and pi resume risk), `SECURITY.md` (that risk as a known limit) and the Captain prompt, if it names the old "start a new task" answer.
 
 ## Out of scope
 

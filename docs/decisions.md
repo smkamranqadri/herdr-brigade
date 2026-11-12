@@ -88,7 +88,7 @@ Each start of the Coordinator or a Captain continues the newest session in its o
 
 ## The Brigade space: tabs, Captains end with the Coordinator, core keep off (2026-11-11, owner's choice)
 
-`brigade start` opens a herdr-app space named Brigade, in the Coordinator's folder, with the Coordinator in tab 1. A Captain gets a tab on `brigade start` or when the owner clicks it; it starts in the background. Facts from the probe are in `docs/herdr-app.md`.
+`brigade start` opens a herdr-app space named Brigade, in the Coordinator's folder, with the Coordinator in tab 1. A Captain gets a tab on `brigade start` or when the owner clicks it; it starts in the background. (Changed on 2026-11-12: see "Project spaces and worker resume".) Facts from the probe are in `docs/herdr-app.md`.
 
 - **Tabs through `terminal.keep`.** Brigade starts every agent through hc, with its name, labels, parent and tool limits. herdr-app's `space.new`, `tab.new` and `terminal.open` start a program of their own, so only `terminal.keep` can give brigade's terminal a tab.
 - **Captains end with the Coordinator.** They start without hc's `--outlive-parent`, so closing the space or the Coordinator's tab stops them too, and they resume next time. Workers keep the flag, so `hc kill` on a Captain leaves them running.
@@ -96,6 +96,17 @@ Each start of the Coordinator or a Captain continues the newest session in its o
 - **Core keep off.** `terminal.keep` turns hc's core keep on. With it on, a reboot leaves a shell in place of the agent, and a tool such as the owner's revive mod can resume the agent there without brigade's tool limits or MCP server. So brigade runs `hc keep <t> --off` after each tab it opens, also when opening fails, and on every brigade terminal at the end of `brigade start`.
 - **Not known:** what herdr-app does with kept terminals after a window restart or a reboot. The owner's window must not restart for a probe.
 - **Rejected:** keeping the peek (Esc in a peek interrupts the agent), and marking brigade terminals for the revive mod to skip (it would tie brigade to one owner's mod).
+
+## Project spaces and worker resume (2026-11-12, owner's choice)
+
+The Brigade space holds only the Coordinator, so the owner finds it at once; 3c adds the TUI pane there. Facts from the probe are in `docs/herdr-app.md`.
+
+- **Project spaces.** A Captain's or worker's tab goes in the first space, in herdr-app's order, whose folder is exactly the project's repo. A subfolder does not count. With no match, brigade makes a space named after the project. Spaces are found by folder only, because the owner's space names differ from repo names and several spaces can share a folder.
+- **A Captain's tab at start, with the view back.** herdr-app makes a tab only in the shown space, so the view jumps to the project space. Brigade then shows the owner's earlier tab again (best effort: a closed tab or space is skipped). If the tab fails, the Captain still runs, and the Coordinator's reply says so.
+- **Worker tabs on a click.** A task click opens the worker and stays there: the owner asked to see it.
+- **Worker resume by folder.** A worker runs only in its task's worktree, so, as for Captains, brigade continues the newest session there and stores no session ids. A resumed worker gets the task's own model, limits and pinned repo, and the running Captain as its parent. It gets no first message: its brief is in its old conversation. When Claude finds no session, or the worker never becomes ready, brigade removes the terminal and refuses: a new conversation would have no brief. One resume per task runs at a time, under a file lock.
+- **A Captain must run.** A worker reports to its Captain, so a resume without one refuses: "Start the <project> Captain first."
+- **Known risk, Codex and pi:** they start a new conversation when they find no session, and they don't say so. A resumed Codex or pi worker whose session was deleted would run without its brief. Brigade does not read their private session files to check. The owner accepted this risk.
 
 ## Gaps against the guide, on purpose (guide P8)
 

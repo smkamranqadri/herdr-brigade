@@ -46,6 +46,9 @@ are the privileged part, and the guards below are about them.
   in any role loads the MCP servers in your `~/.codex/config.toml` and those of your Codex plugins, such as computer
   use. A **pi** agent in any role loads the MCP servers in your `~/.pi/agent/mcp.json`, with no approval prompt. Brigade
   doesn't turn these off yet, so run Captains and workers on Claude Code if your own tools must stay out of reach.
+- **A resumed Codex or pi worker may have lost its brief.** Brigade resumes a closed worker in its worktree. Codex and
+  pi start a new conversation when they find no session there, without saying so. Then the worker runs with its task's
+  title and branch, but not its brief. Brigade does not read their session files to check. See `docs/decisions.md`.
 - **The Coordinator can see all your terminals.** `herdr_agents` lists every live terminal in Herdr with its program,
   status, space/tab and folder, so the Coordinator's model sees those folder names too. It reads nothing inside them.
 - **The event log is plain text.** `~/.local/state/herdr-brigade/events.jsonl` keeps tasks, messages, notes and pull

@@ -3,14 +3,15 @@
 Stamp: main 4414807 67f55d5c6ed3
 
 - Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
-- Task: `kis/intent/plan-tabs.md` (Phase mode; reviewed by Codex on 2026-11-12). T0 to T7 are done. T8 (the panel) is written and passes `herdr-app check`; its window check waits for the live checks. Now T9: docs.
+- Task: `kis/intent/plan-tabs.md` (Phase mode; reviewed by Codex on 2026-11-12). T0 to T7 and T9 are done. T8 (the panel) waits for its window check. Left: the live checks.
 - Blocker: none. No test agents are running.
-- Next: T1 to T4, then T5 to T9. Live checks need the owner's approval of the model first.
+- Next: the owner approves the model for the live checks (about 4 short model calls), then `brigade mod install` and the 8 live checks in a test config. Then sync KIS.
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 
 ## Proof
 
+- plan-tabs T9 on 2026-11-12: README, CHANGELOG, `docs/decisions.md`, `docs/herdr-app.md`, `SECURITY.md` (the Codex and pi resume risk) and the Captain prompt updated; no stale claims that a task click peeks (grep). `npm run gate` passed (322 tests).
 - plan-tabs T7 on 2026-11-12: built in T5. `sendToTask` resumes an ended worker, then sends; the mutations "running worker no resume" and "resume flag" failed the `sendToTask` tests.
 - plan-tabs T8 on 2026-11-12, not done yet: `npm run gate` passed (322 tests). `herdr-app check` passed on scratch copies of the mod with a new `config.js` and with one from before `OPEN`. `mod/main.js` has no unit tests, so the rail fix and the task clicks are not checked until the live window check.
 - plan-tabs T6 on 2026-11-12: `npm run gate` passed (322 tests, 98.14% of statements, suppressions 9, 0 vulnerabilities). 5 mutations of `openTask` (stay on the worker's tab, the project space, the plain failure for a running worker, the window check, the unknown task) each failed a named test. `brigade open task-zzz` said "No task task-zzz.", and `brigade open` with no argument gave the usage. A lock test that assumed an order between holders was fixed to check only that they take turns (5 runs passed).
