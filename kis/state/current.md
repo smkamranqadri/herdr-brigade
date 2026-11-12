@@ -1,11 +1,11 @@
 # Current state
 
-Stamp: main 34bd30f 67f55d5c6ed3
+Stamp: main 4414807 67f55d5c6ed3
 
 - Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
-- Task: none in progress. Phase 3b, the Brigade space, is done (`kis/intent/plan-phase-3b.md`) and synced to Reality.
+- Task: tabs for Captains and workers, and worker resume (`kis/intent/plan-tabs.md`). Scope approved and reviewed by Codex on 2026-11-12. No task started.
 - Blocker: none. No test agents are running.
-- Next: plan the first backlog item, tabs for Captains and workers (`kis/intent/backlog.md`), with KIS. Then 3c, the TUI (`kis/intent/plan-phase-3.md`).
+- Next: T0, a live probe of view restore in herdr-app (no model calls; the owner approves each window command). Then 3c, the TUI (`kis/intent/plan-phase-3.md`).
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 
