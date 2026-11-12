@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 import { FileLocks } from "./fileLocks.ts";
 
 const temp = () => mkdtemp(path.join(tmpdir(), "brigade-locks-"));
+/** True when each holder went in and out before the next went in: ["x in", "x out", "y in", "y out"]. */
+const inTurn = (order: readonly string[]) => {
+  const [a = "", b = "", c = "", d = ""] = order;
+  const pair = (x: string, y: string) => x.endsWith(" in") && y === x.replace(" in", " out");
+  return order.length === 4 && pair(a, b) && pair(c, d) && a !== c;
+};
 
 describe("FileLocks", () => {
   it("runs one holder at a time, also across lock objects, and removes the lock after", async () => {
@@ -18,10 +24,10 @@ describe("FileLocks", () => {
       return who;
     };
     expect(await Promise.all([a.withLock("task-1", hold("a")), b.withLock("task-1", hold("b"))])).toEqual(["a", "b"]);
-    expect(order).toEqual(["a in", "a out", "b in", "b out"]);
+    expect(inTurn(order)).toBe(true);
     order.length = 0;
     expect(await Promise.all([a.withLock("task-1", hold("c")), a.withLock("task-1", hold("d"))])).toEqual(["c", "d"]);
-    expect(order).toEqual(["c in", "c out", "d in", "d out"]);
+    expect(inTurn(order)).toBe(true);
     expect(await readdir(folder)).toEqual([]);
   });
 

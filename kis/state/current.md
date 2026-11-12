@@ -3,7 +3,7 @@
 Stamp: main 4414807 67f55d5c6ed3
 
 - Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
-- Task: `kis/intent/plan-tabs.md` (Phase mode; reviewed by Codex on 2026-11-12). T0 to T5 are done. Now T6: `brigade open <task id>`.
+- Task: `kis/intent/plan-tabs.md` (Phase mode; reviewed by Codex on 2026-11-12). T0 to T6 are done. Now T7 and T8: the panel.
 - Blocker: none. No test agents are running.
 - Next: T1 to T4, then T5 to T9. Live checks need the owner's approval of the model first.
 
@@ -11,6 +11,7 @@ How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run
 
 ## Proof
 
+- plan-tabs T6 on 2026-11-12: `npm run gate` passed (322 tests, 98.14% of statements, suppressions 9, 0 vulnerabilities). 5 mutations of `openTask` (stay on the worker's tab, the project space, the plain failure for a running worker, the window check, the unknown task) each failed a named test. `brigade open task-zzz` said "No task task-zzz.", and `brigade open` with no argument gave the usage. A lock test that assumed an order between holders was fixed to check only that they take turns (5 runs passed).
 - plan-tabs T5 on 2026-11-12: `npm run gate` passed (317 tests, 98.11% of statements, suppressions 9, 0 vulnerabilities). 23 mutations (the running-worker check and its place inside the lock, the lock, the Captain, pinned-repo and worktree refusals, the task's spec, the pinned repo's write folder, the Captain as parent, no first message, `resume` and `resumeOnly`, the event's terminal, removal on no session and on timeout, the retry timeout, the lock's exclusive create, stale takeover, release and name check) each failed a named test; each file was restored byte for byte. Two survived at first: the retry timeout got a test, and an unneeded in-process queue in `FileLocks` was removed. `Worktrees.verify` is tested against real git. Not run with a real agent yet.
 - plan-tabs T1 to T4 on 2026-11-12: `npm run gate` passed (299 tests before the last added test, 98.03% of statements, suppressions 9, 0 vulnerabilities). 18 mutations (folder-only and first match, the made space's name, `returnToView` both ways and after a failure, a gone tab or space, a restore error, `first` only in the place's space, the `active` parse, the new Captain's tab, its view return, a tab failure that is not fatal, the project place, Captains per configured project, the `openAgent` refusal) each failed a named test; each file was restored byte for byte. One mutation survived at first and got a new test. `brigade status` ran without herdr-app on PATH, and `brigade open` then said herdr-app is missing. Not run in the live window yet.
 - plan-tabs T0 on 2026-11-12 (herdr-app 0.1.15, hc 0.1.20), results in `docs/herdr-app.md`: `space.select` and `tab.select` showed the owner's earlier view again, and `tab.select` alone also switches the space. A tab was made in a space that was not shown. Missing ids exit 1 and leave the view. The probe space and both its terminals are gone. Checked by `ls` marks only, not by the owner's eye.

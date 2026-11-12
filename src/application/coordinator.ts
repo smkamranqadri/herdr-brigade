@@ -6,6 +6,7 @@ import { deriveTasks } from "../domain/tasks.ts";
 import { refreshPrs } from "./publish.ts";
 import { findTerminals, launchAgent, record, terminalName } from "./launch.ts";
 import type { Deps, OpenOptions, SpacePlace } from "./ports.ts";
+import { taskNamed, workerFor, type WorkerAt } from "./resume.ts";
 
 export function projectNamed(deps: Deps, name: string): ProjectConfig {
   const project = deps.config.projects.find((p) => p.name === name);
@@ -137,6 +138,27 @@ export async function openAgent(deps: Deps, address: string): Promise<void> {
   const captain = (await runningCaptains(deps)).find((c) => c.address === address);
   if (!captain) throw new BrigadeError(`${address} is not a running Coordinator or Captain.`);
   await openTab(deps, address, { place: projectPlace(captain.project), ...CAPTAIN_TAB });
+}
+
+/**
+ * `brigade open <task id>`: shows the task's worker in its project's space and stays there. An ended worker is resumed
+ * first. If the tab then fails, the worker keeps running, and the next open shows it without a second resume.
+ */
+export async function openTask(deps: Deps, id: string): Promise<WorkerAt> {
+  await deps.workspace.check();
+  const task = await taskNamed(deps, id);
+  if (!task) throw new BrigadeError(`No task ${id}.`);
+  const worker = await workerFor(deps, task);
+  const place = { name: task.project, folder: task.repo ?? projectNamed(deps, task.project).repo };
+  try {
+    await openTab(deps, worker.address, { place, first: false, returnToView: false });
+  } catch (err) {
+    if (!worker.resumed) throw err;
+    throw new BrigadeError(
+      `${messageOf(err)}\nIts worker was resumed and runs in terminal ${worker.address} without a tab. Open the task again to try once more.`,
+    );
+  }
+  return worker;
 }
 
 /** Opens a new Captain's tab in its project's space and shows the owner's tab again. Returns a note when it fails. */

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { listProjects, listTasks, openAgent, openBrigade, sendToCaptain, startCoordinator } from "./coordinator.ts";
+import {
+  listProjects,
+  listTasks,
+  openAgent,
+  openBrigade,
+  openTask,
+  sendToCaptain,
+  startCoordinator,
+} from "./coordinator.ts";
+import { createTask } from "./captain.ts";
 import { ctx, fakeDeps } from "./fakes.ts";
 
 const coordinator = ctx({ role: "coordinator", terminal: "t9" });
@@ -349,5 +358,63 @@ describe("a new Captain's tab", () => {
     await send(f);
     await send(f);
     expect(f.workspace.opened).toHaveLength(1);
+  });
+});
+
+describe("openTask", () => {
+  /** The shop Captain in t1 and its task task-000001, whose worker runs in t2. */
+  async function withTask() {
+    const f = fakeDeps();
+    await sendToCaptain(f.deps, ctx({ role: "coordinator", terminal: "t0" }), { project: "shop", message: "x" });
+    await createTask(f.deps, ctx({ role: "captain", terminal: "t1", project: "shop" }), {
+      title: "Login",
+      prompt: "p",
+    });
+    f.workspace.opened.length = 0;
+    f.terminals.keptOff.length = 0;
+    return f;
+  }
+  const workerTab = (address: string) => ({ address, folder: "/repos/shop", first: false, back: false });
+
+  it("opens a running worker's tab in the project's space and stays there", async () => {
+    const f = await withTask();
+    expect(await openTask(f.deps, "task-000001")).toEqual({ address: "t2", resumed: false });
+    expect(f.workspace.checks).toEqual([0]);
+    expect(f.workspace.opened).toEqual([workerTab("t2")]);
+    expect(f.terminals.keptOff).toEqual(["t2"]);
+  });
+
+  it("resumes an ended worker, then opens its tab", async () => {
+    const f = await withTask();
+    f.terminals.live.splice(1, 1);
+    expect(await openTask(f.deps, "task-000001")).toEqual({ address: "t3", resumed: true });
+    expect(f.workspace.opened).toEqual([workerTab("t3")]);
+  });
+
+  it("refuses an unknown task, and opens nothing when the window is not running", async () => {
+    const f = await withTask();
+    await expect(openTask(f.deps, "task-999")).rejects.toThrow(/^No task task-999\.$/);
+    f.workspace.checkError = new Error("herdr-app is not running.");
+    await expect(openTask(f.deps, "task-000001")).rejects.toThrow(/^herdr-app is not running\.$/);
+    expect(f.workspace.opened).toEqual([]);
+  });
+
+  it("says a resumed worker runs without a tab when its tab fails, and shows it next time without a resume", async () => {
+    const f = await withTask();
+    f.terminals.live.splice(1, 1);
+    f.workspace.openFails.add("t3");
+    await expect(openTask(f.deps, "task-000001")).rejects.toThrow(
+      /^no tab for t3\nIts worker was resumed and runs in terminal t3 without a tab\. Open the task again to try once more\.$/,
+    );
+    expect(f.terminals.keptOff).toEqual(["t3"]);
+    f.workspace.openFails.clear();
+    expect(await openTask(f.deps, "task-000001")).toEqual({ address: "t3", resumed: false });
+    expect(f.terminals.launched).toHaveLength(3);
+  });
+
+  it("passes on a tab failure for a running worker as it is", async () => {
+    const f = await withTask();
+    f.workspace.openFails.add("t2");
+    await expect(openTask(f.deps, "task-000001")).rejects.toThrow(/^no tab for t2$/);
   });
 });

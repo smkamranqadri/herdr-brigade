@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { userInfo } from "node:os";
 import path from "node:path";
-import { listTasks, openAgent, openBrigade } from "../application/coordinator.ts";
+import { listTasks, openAgent, openBrigade, openTask } from "../application/coordinator.ts";
 import { findTerminals } from "../application/launch.ts";
 import { BrigadeError, errorCode } from "../domain/errors.ts";
 import { installMod } from "../adapters/herdrApp/herdrApp.ts";
@@ -14,10 +14,11 @@ import { buildDeps, buildHerdrApp, freshDeps, loadConfig } from "./bootstrap.ts"
 import { readAgentContext, readPaths, type Paths } from "./settings.ts";
 
 const USAGE = `brigade init          write a starter config
-brigade start         open the Brigade space in herdr-app: the Coordinator in tab 1 (started once, continuing
-                      its last conversation) and a tab for each running Captain
+brigade start         open the Brigade space in herdr-app with the Coordinator (started once, continuing its
+                      last conversation), and each running Captain in its project's space
 brigade start --new   the same, with the Coordinator in a new conversation
 brigade open <t>      open the Coordinator's or a Captain's tab (terminal address t)
+brigade open <task>   open a task's worker in its project's space, resuming it if it has ended
 brigade status        list the brigade's agents and tasks
 brigade panel         open or close the Brigade panel as a window
 brigade mod install   install the Brigade panel into herdr-app
@@ -62,10 +63,15 @@ async function start(paths: Paths): Promise<string> {
 }
 
 async function open(paths: Paths): Promise<string> {
-  const address = process.argv[3];
-  if (!address) throw new BrigadeError("Usage: brigade open <terminal address>");
-  await openAgent(buildDeps(await loadConfig(paths), paths), address);
-  return `Opened ${address} in herdr-app.`;
+  const target = process.argv[3];
+  if (!target) throw new BrigadeError("Usage: brigade open <terminal address | task id>");
+  const deps = buildDeps(await loadConfig(paths), paths);
+  if (!target.startsWith("task-")) {
+    await openAgent(deps, target);
+    return `Opened ${target} in herdr-app.`;
+  }
+  const worker = await openTask(deps, target);
+  return `Opened ${target}${worker.resumed ? ", resumed" : ""}: its worker is in terminal ${worker.address}.`;
 }
 
 async function panel(paths: Paths): Promise<string> {
