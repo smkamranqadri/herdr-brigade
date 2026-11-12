@@ -14,8 +14,11 @@ const MOD_NAME = "brigade";
 const NOT_SEEN_YET = "no running terminal";
 const FOCUS_WAIT_MS = 10_000;
 const FOCUS_RETRY_MS = 500;
-/** The mod's files, copied as they are. config.js is written by the install. */
-const MOD_FILES = ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg"];
+/**
+ * The mod's files, copied as they are, in this order. herdr-app reloads the mod when main.js is
+ * saved, so main.js goes last, after config.js and the files it imports.
+ */
+const MOD_FILES = ["model.js", "mod.json", "brigade.svg", "panel.svg", "main.js"];
 
 export function herdrAppRunner(bin: string): HerdrAppRunner {
   return (args) =>
@@ -235,7 +238,6 @@ export async function installMod(
 ): Promise<string> {
   const target = path.join(herdrAppHome, "mods", MOD_NAME);
   await mkdir(target, { recursive: true });
-  for (const file of MOD_FILES) await copyFile(path.join(source, file), path.join(target, file));
   const config = [
     `// Written by "brigade mod install"; run it again to change.`,
     `export const STATE_DIR = ${JSON.stringify(where.stateDir)};`,
@@ -247,5 +249,6 @@ export async function installMod(
     "",
   ].join("\n");
   await writeFile(path.join(target, "config.js"), config);
+  for (const file of MOD_FILES) await copyFile(path.join(source, file), path.join(target, file));
   return target;
 }

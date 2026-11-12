@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -54,6 +54,26 @@ describe("installMod", () => {
         "",
       ].join("\n"),
     );
+  });
+
+  it("copies main.js last, so herdr-app reloads the mod with the new config.js", async () => {
+    const source = await mkdtemp(path.join(tmpdir(), "brigade-mod-src-"));
+    for (const f of ["main.js", "model.js", "mod.json", "brigade.svg", "panel.svg"])
+      await writeFile(path.join(source, f), f);
+    const home = await mkdtemp(path.join(tmpdir(), "brigade-herdr-home-"));
+    const target = path.join(home, "mods", "brigade");
+    // A folder named main.js makes its copy fail, so the files written before it stay.
+    await mkdir(path.join(target, "main.js"), { recursive: true });
+    const where = { stateDir: "/s", configFile: "/c", start: ["start"], open: ["open"] };
+    await expect(installMod(source, home, where)).rejects.toThrow();
+    expect((await readdir(target)).sort()).toEqual([
+      "brigade.svg",
+      "config.js",
+      "main.js",
+      "mod.json",
+      "model.js",
+      "panel.svg",
+    ]);
   });
 });
 
