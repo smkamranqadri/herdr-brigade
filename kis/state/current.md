@@ -1,22 +1,20 @@
 # Current state
 
-Stamp: main 74c8f0e 67f55d5c6ed3
+Stamp: main 729fb38 67f55d5c6ed3
 
-- Branch: `main`, in the repo root. No other worktrees. Thirteen commits are not pushed yet.
+- Branch: `main`, in the repo root. No other worktrees. Fifteen commits are not pushed yet.
 - Task: phase 3b, the Brigade space (`kis/intent/plan-phase-3b.md`; reviewed twice by Codex, the last change waived by the owner). T0 to T7 and the live checks are done. Check 6 changed the plan: closing the space ends workers too (owner's choice).
 - Blocker: none. No test agents are running.
-- Found on 2026-11-12 in the panel: a click on a Captain name opens its tab, but only after `main.js` was saved again. `installMod` copied `main.js` before it wrote `config.js`, so herdr-app reloaded the panel with the old config. Fixed, not committed: it now writes `config.js` first and copies `main.js` last.
 - Found on 2026-11-12: a click on a task row under a Captain still peeks. This is by design in 3b (T6).
 - Next, in this order:
-  1. The owner runs `brigade mod install` again and clicks a Captain without a tab.
-  2. Plan the tabs work with KIS (owner's choices on 2026-11-11): a Captain gets a tab in the Brigade space when it starts, and brigade then shows the owner's tab again. A click on a worker row gives the worker a tab in the space whose folder is the project's repo, else in the Brigade space. If the owner does not like click tabs, workers get a tab when they start.
-  3. Sync KIS for 3b.
+  1. Plan the tabs work with KIS (owner's choices on 2026-11-11): a Captain gets a tab in the Brigade space when it starts, and brigade then shows the owner's tab again. A click on a worker row gives the worker a tab in the space whose folder is the project's repo, else in the Brigade space. If the owner does not like click tabs, workers get a tab when they start.
+  2. Sync KIS for 3b.
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 
 ## Proof
 
-- `installMod` order on 2026-11-12: `npm run gate` passed (288 tests, 97.99% of statements, suppressions 9, 0 vulnerabilities). 2 mutations (`main.js` first again, `config.js` written after the copies) each failed the new test; the file was restored byte for byte. Not yet run against the live window.
+- `installMod` order on 2026-11-12: `npm run gate` passed (288 tests, 97.99% of statements, suppressions 9, 0 vulnerabilities). 2 mutations (`main.js` first again, `config.js` written after the copies) each failed the new test; the file was restored byte for byte. Live in the owner's window: after `brigade mod install`, `config.js` was written first and `main.js` last, and a click on a new kis-skill Captain (started by a Coordinator request, no tab) opened its tab.
 - 3b live checks on 2026-11-11 (`docs/e2e-runs.md`, run `run-resume-claude-20261111-221605`, `claude-sonnet-5-5` low, 2 model calls): checks 1 to 5 and 7 passed. Check 6 found that closing the space ends workers too; the owner accepted that. No test terminal is left running.
 - 3b T7 on 2026-11-11: README, CHANGELOG, `docs/decisions.md`, `docs/architecture.md` and `docs/herdr-app.md` updated; no stale peek claims left (grep). `npm run gate` passed (287 tests).
 - 3b T6 on 2026-11-11: `npm run gate` passed (287 tests). `herdr-app check` passed on scratch copies of the mod with a new `config.js` and with one from before `OPEN`; a named import of `OPEN` failed that check, so the namespace import is needed. A mutation of the `OPEN` line failed the `installMod` test. The panel has not been seen in the live window yet.
