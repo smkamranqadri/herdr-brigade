@@ -227,7 +227,7 @@ Run folder `run-resume-claude-20261111-221605`, every role on `claude-sonnet-5-5
 
 Run folder `run-resume-claude-20261112-144501`, Captain and worker on `claude-sonnet-5-5` low, driven by hand. herdr-app 0.1.15, hc 0.1.20. The owner's own brigade was running, so a `sleep` terminal stood in as the Captain's parent, and the use cases ran through a small script, as the Coordinator's and Captain's tools run them. One test Captain report reached the owner's real Coordinator (the owner accepted this). About 6 model calls: the Captain twice, the worker four times.
 
-- **Captain tab at start:** a Coordinator request started the demo Captain (`t1m9`; its first start `t1m8` found no session and was started again, as in 3a). No space had the repo folder, so brigade made a space named `demo` with the Captain alone in it. The owner's view (`herdr-mods`) came back. On a later start (`t1mk`) the same happened.
+- **Captain tab at start:** a Coordinator request started the demo Captain (`t1m9`; its first start `t1m8` found no session and was started again, as in 3a). No space had the repo folder, so brigade made a space named `demo` with the Captain alone in it. The owner's view came back. On a later start (`t1mk`) the same happened.
 - **Task open, running worker:** `brigade open task-9b5f17` opened worker `t1mc` in a tab in `demo` in about 1 s, and the view stayed there.
 - **Resume on open:** the worker's tab was closed, which ended it. `brigade open task-9b5f17` resumed it as `t1mh` in a new tab, with its old conversation on screen. Asked the colour without reading again, it answered "Teal".
 - **Resume on follow-up:** the tab was closed again. A Captain follow-up resumed the worker as `t1mj` (no tab, by design), and it sent "teal" to the Captain.
@@ -236,5 +236,5 @@ Run folder `run-resume-claude-20261112-144501`, Captain and worker on `claude-so
 - **Core keep:** `hc get` showed `keep` false on every test terminal after each step.
 - **Checked by hand:** each layout through `herdr-app ls`, each terminal through `hc get`, and the worker's screen through `hc read`. Codex and pi worker resume were not run.
 - **Cleanup:** the `demo` space and the parent terminal were closed; no test terminal is left.
-- **Panel, in the owner's real brigade (owner's clicks):** after `brigade mod install`, a click on a task row opened a running worker (vu-bbit) in its project's space, and a click on an ended worker's task (kis-skill, `task-c8f116`) resumed it as `t1n0` and opened it there. The rail was not checked: it exists only in a layout column, and 3c replaces it.
+- **Panel, in the owner's real brigade (owner's clicks):** after `brigade mod install`, a click on a task row opened a running worker in its project's space, and a click on an ended worker's task resumed it and opened it there. The rail was not checked: it exists only in a layout column, and 3c replaces it.
 - **Moving the owner's Captains:** `terminal.park` took the 5 old Captain tabs out of the Brigade space and left the Captains running. `brigade start` then opened each one in its project's space; the Brigade space kept only the Coordinator, and core keep stayed off.

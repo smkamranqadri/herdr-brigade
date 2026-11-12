@@ -43,7 +43,7 @@ Not probed: what herdr-app and hc do with kept terminals after a window restart 
 
 ### Showing the owner's view again (probed 2026-11-12)
 
-Probed with herdr-app 0.1.15 and hc 0.1.20, with a `sleep` terminal in a `brigade-probe` space, from the owner's space `herdr-mods`. These facts are for `kis/intent/plan-tabs.md`.
+Probed with herdr-app 0.1.15 and hc 0.1.20, with a `sleep` terminal in a `brigade-probe` space, from another space the owner was in. These facts are for `kis/intent/plan-tabs.md`.
 
 | Command | What it did |
 | --- | --- |

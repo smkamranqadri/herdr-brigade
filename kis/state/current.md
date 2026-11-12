@@ -5,7 +5,7 @@ Stamp: main 466ddb4 f3aa70a781e9
 - Branch: `main`, in the repo root. No other worktrees. Some commits are not pushed yet: `git log --oneline origin/main..main` lists them.
 - Task: none in progress. Project spaces and worker resume (`kis/intent/plan-tabs.md`) are done and synced to Reality.
 - Blocker: none. No test agents are running.
-- Next: the owner uses the brigade with the panel as a column of the `estro` layout (added on 2026-11-12; backup `estro.json.bak-brigade-20261112`). 3c, the TUI, is pinned.
+- Next: the owner uses the brigade with the panel as a column of the owner's herdr-app layout (added on 2026-11-12, with a backup of the layout file). 3c, the TUI, is pinned.
 
 How to run: `mise install`, `npm ci`, then `npm run gate`. Real agents: `npm run e2e -- <claude|codex|pi> "<request>"`.
 
