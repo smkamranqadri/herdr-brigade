@@ -1,6 +1,6 @@
 // The Brigade panel for herdr-app: the Coordinator, each project's Captain and tasks with live status, and the latest
-// events. A click on the Coordinator or a Captain opens its tab in the Brigade space (`brigade open`); a click on a
-// task shows its worker over your tab (peek). Either way you chat with the agent there. It changes nothing else.
+// events. A click on an agent opens its tab (`brigade open`): the Coordinator's in the Brigade space, a Captain's or a
+// task's worker in the project's space. A task whose worker has ended is resumed first. It changes nothing else.
 // In its own layout column, an icon (or the "brigade.toggle" key) folds it to a rail, as the left sidebar does.
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
@@ -10,7 +10,7 @@ import * as config from "./config.js";
 import { PANEL_ID, buildModel, configProjects, isRail, panelWidth, parseEvents, toggledWidth } from "./model.js";
 
 const { CONFIG_FILE, START, STATE_DIR } = config;
-/** `brigade open` for this same config and state, without the address; null in a config.js from before it. */
+/** `brigade open` for this same config and state, without its target; null in a config.js from before it. */
 const OPEN = config.OPEN ?? null;
 const EVENTS_FILE = `${STATE_DIR}/events.jsonl`;
 /** The column's width before it folded, so unfolding brings it back. */
@@ -21,6 +21,11 @@ const RETRY_MS = 5000;
 const START_TIMEOUT_MS = 90_000;
 /** brigade open waits up to 10 s for herdr-app to see the terminal, then up to 10 s for its tab. */
 const OPEN_TIMEOUT_MS = 30_000;
+/**
+ * Opening a task can also resume its worker: up to 90 s for another resume of it to finish, 30 s for a trust prompt,
+ * then the tab as above.
+ */
+const TASK_OPEN_TIMEOUT_MS = 180_000;
 
 const localTime = (iso) => new Date(iso).toTimeString().slice(0, 5);
 
@@ -33,6 +38,8 @@ export default class Brigade extends View {
     this.startError = null;
     /** Why the last `brigade open` failed, or null. */
     this.openError = null;
+    /** Targets whose `brigade open` still runs. */
+    this.opening = new Set();
     this.watch(cx);
     this.listen(cx);
   }
@@ -111,8 +118,8 @@ export default class Brigade extends View {
    * task. Each cell opens its agent, as the full panel's rows do.
    */
   rail(m, t) {
-    const peek = (address) => (address === null ? null : () => run("terminal.peek", { terminal: address }));
     const open = (address) => (address === null ? null : (_e, cx) => this.openTab(address, cx));
+    const openTask = (task) => (_e, cx) => this.openTask(task, cx);
     const coordinator =
       m.coordinator === null
         ? this.railCell(
@@ -134,7 +141,7 @@ export default class Brigade extends View {
             open(m.coordinator.address),
           );
     const project = (p) => {
-      const open = p.tasks.filter((task) => task.state !== "finished");
+      const openTasks = p.tasks.filter((task) => task.state !== "finished");
       return v_flex()
         .gap(2)
         .items_center()
@@ -143,20 +150,20 @@ export default class Brigade extends View {
             `rail-${p.name}`,
             this.letter(p.name, t),
             p.captain?.status,
-            `${p.name} · ${p.captain ? `Captain ${p.captain.status ?? "starting"}` : "no Captain"} · ${open.length} open ${open.length === 1 ? "task" : "tasks"}`,
+            `${p.name} · ${p.captain ? `Captain ${p.captain.status ?? "starting"}` : "no Captain"} · ${openTasks.length} open ${openTasks.length === 1 ? "task" : "tasks"}`,
             t,
             open(p.captain?.address ?? null),
           ),
         )
         .children(
-          open.map((task) =>
+          openTasks.map((task) =>
             this.railCell(
               `rail-task-${task.id}`,
               this.dot(task.waiting ? "blocked" : task.status, t),
               undefined,
               `${task.title} · ${task.waiting ? "waiting on you" : task.state}`,
               t,
-              peek(task.address),
+              openTask(task),
             ),
           ),
         );
@@ -244,7 +251,7 @@ export default class Brigade extends View {
       .ml(14)
       .rounded(6)
       .hover((s) => s.bg(t.hover))
-      .when(task.address !== null, (el) => el.on_click(() => run("terminal.peek", { terminal: task.address })))
+      .on_click((_e, cx) => this.openTask(task, cx))
       .child(
         h_flex()
           .gap(8)
@@ -271,22 +278,32 @@ export default class Brigade extends View {
       );
   }
 
-  /**
-   * Runs `brigade open <address>`, which opens the agent's tab in the Brigade space. If it fails, or config.js is from
-   * before `OPEN`, the agent is shown over the tab (peek) instead, and the panel says why.
-   */
+  /** Opens the Coordinator's or a Captain's tab. A config.js from before `OPEN` shows it over your tab (peek). */
   openTab(address, cx) {
     if (OPEN === null) return run("terminal.peek", { terminal: address });
+    this.runOpen(address, OPEN_TIMEOUT_MS, cx);
+  }
+
+  /** Opens a task's worker, resuming it first if it has ended. A config.js from before `OPEN` peeks at a running one. */
+  openTask(task, cx) {
+    if (OPEN !== null) return this.runOpen(task.id, TASK_OPEN_TIMEOUT_MS, cx);
+    if (task.address !== null) run("terminal.peek", { terminal: task.address });
+  }
+
+  /** Runs `brigade open <target>`, and says why when it fails. Clicks on a target that is still opening are ignored. */
+  runOpen(target, timeout, cx) {
+    if (this.opening.has(target)) return;
+    this.opening.add(target);
     cx.spawn(async (cx) => {
       let error = null;
       try {
-        const r = await exec(OPEN[0], [...OPEN.slice(1), address], { timeout: OPEN_TIMEOUT_MS });
+        const r = await exec(OPEN[0], [...OPEN.slice(1), target], { timeout });
         if (r.code !== 0) error = (r.stderr || r.stdout).trim().split("\n").pop() || `exit ${r.code}`;
       } catch (err) {
         error = String(err);
       }
+      this.opening.delete(target);
       this.openError = error;
-      if (error !== null) run("terminal.peek", { terminal: address });
       cx.notify();
     });
   }
@@ -375,7 +392,7 @@ export default class Brigade extends View {
           ),
       )
       .when(this.openError !== null, (el) =>
-        el.child(div().text_size(11.5).text_color(t.blocked).child(`Couldn't open its tab: ${this.openError}`)),
+        el.child(div().text_size(11.5).text_color(t.blocked).child(`Couldn't open it: ${this.openError}`)),
       )
       .when(m.coordinator === null, (el) => el.child(this.startButton(t)))
       .when(m.coordinator !== null, (el) => el.child(this.agentLine("coordinator", "Coordinator", m.coordinator, t)))

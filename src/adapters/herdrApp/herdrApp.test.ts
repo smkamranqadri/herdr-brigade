@@ -49,7 +49,7 @@ describe("installMod", () => {
         'export const CONFIG_FILE = "/c/config.json";',
         "// The panel's Start button runs this: `brigade start` for this same config and state.",
         'export const START = ["env","BRIGADE_STATE=/s","/bin/node","/app/cli.ts","start"];',
-        "// A click on the Coordinator or a Captain runs this with the terminal's address: `brigade open <address>`.",
+        "// A click on an agent runs this with its terminal's address or its task's id: `brigade open <target>`.",
         'export const OPEN = ["env","BRIGADE_STATE=/s","/bin/node","/app/cli.ts","open"];',
         "",
       ].join("\n"),
