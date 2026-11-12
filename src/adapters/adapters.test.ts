@@ -96,6 +96,26 @@ describe("GitWorktrees", () => {
     expect(git(repo, "log", "-1", "--format=%s", "main")).toBe("init");
   });
 
+  it("verifies a task's worktree, and refuses a switched branch or a removed worktree", async () => {
+    const repo = path.join(await temp("repo"), "shop");
+    await mkdir(repo);
+    const git = (dir: string, ...args: string[]) =>
+      execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim();
+    git(repo, "init", "-q", "-b", "main");
+    await writeFile(path.join(repo, "README.md"), "# shop\n");
+    git(repo, "add", "README.md");
+    git(repo, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-q", "-m", "init");
+    const worktrees = new GitWorktrees(await temp("worktrees"));
+    const folder = await worktrees.create(repo, "main", "brigade/login-1");
+    const target = { worktree: folder, repo, branch: "brigade/login-1", runHooks: false };
+    await worktrees.verify(target);
+    await expect(worktrees.verify({ ...target, branch: "brigade/other" })).rejects.toThrow(
+      /no longer the task's worktree \(it is on brigade\/login-1, not brigade\/other\)/,
+    );
+    git(repo, "worktree", "remove", folder);
+    await expect(worktrees.verify(target)).rejects.toThrow();
+  });
+
   it("creates worktrees and commits in them in parallel without lock errors", async () => {
     const repo = path.join(await temp("repo"), "shop");
     await mkdir(repo);

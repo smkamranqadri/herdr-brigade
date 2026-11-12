@@ -2,11 +2,10 @@ import { isEffort, isHarness, type AgentContext, type AgentSpec } from "../domai
 import type { ProjectConfig } from "../domain/config.ts";
 import { BrigadeError } from "../domain/errors.ts";
 import type { NewEvent } from "../domain/events.ts";
-import { deriveNotes } from "../domain/notes.ts";
-import { branchFor, deriveTasks } from "../domain/tasks.ts";
-import { notesBlock } from "./notes.ts";
+import { branchFor } from "../domain/tasks.ts";
 import { projectNamed } from "./coordinator.ts";
 import { findTerminals, launchAgent, record, terminalName } from "./launch.ts";
+import { taskNamed, workerFor, workerPromptValues } from "./resume.ts";
 import type { Deps } from "./ports.ts";
 
 export interface CreateTaskInput {
@@ -49,7 +48,6 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
   const task = deps.ids.taskId();
   const branch = branchFor(task, input.title);
   const worktree = await deps.worktrees.create(project.repo, project.baseBranch, branch);
-  const notes = notesBlock(deriveNotes(await deps.events.read(), project.name).notes, deps.config.owner);
   const terminal = await launchAgent(
     deps,
     {
@@ -58,7 +56,7 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
       cwd: worktree,
       context: { role: "worker", project: project.name, task, title: input.title, parent: ctx.terminal },
       firstMessage: input.prompt,
-      promptValues: { PROJECT: project.name, TASK: task, TITLE: input.title, BRANCH: branch, NOTES: notes },
+      promptValues: await workerPromptValues(deps, { project: project.name, task, title: input.title, branch }),
       // A worktree's commits land in the main repo's .git folder, outside the worktree.
       writableDirs: [`${project.repo}/.git`],
     },
@@ -67,19 +65,17 @@ export async function createTask(deps: Deps, ctx: AgentContext, input: CreateTas
   return `Started ${task} "${input.title}" on ${spec.harness} (${spec.model}) in terminal ${terminal}, branch ${branch}. End your turn; its report arrives as a [brigade] message.`;
 }
 
-/** Sends a follow-up to a task's worker, which picks it up in the same session. */
+/** Sends a follow-up to a task's worker, which picks it up in the same session. An ended worker is resumed first. */
 export async function sendToTask(
   deps: Deps,
   ctx: AgentContext,
   input: { task: string; message: string },
 ): Promise<string> {
   const project = ownProject(ctx);
-  const task = deriveTasks(await deps.events.read()).find((t) => t.id === input.task);
+  const task = await taskNamed(deps, input.task);
   if (!task || task.project !== project)
     throw new BrigadeError(`No task ${input.task} in ${project}. Call list_tasks.`);
-  const [worker] = await findTerminals(deps, { role: "worker", task: task.id });
-  if (!worker)
-    throw new BrigadeError(`The worker for ${task.id} is not running, so it can't take a follow-up. Start a new task.`);
+  const worker = await workerFor(deps, task);
   await deps.terminals.send(worker.address, `[brigade] From your Captain: ${input.message}`);
   await record(deps, {
     kind: "message_sent",
@@ -89,7 +85,8 @@ export async function sendToTask(
     task: task.id,
     text: input.message,
   });
-  return `Sent to ${task.id}. End your turn; its report arrives as a [brigade] message.`;
+  const resumed = worker.resumed ? ` Its worker had ended, so brigade resumed it in terminal ${worker.address}.` : "";
+  return `Sent to ${task.id}.${resumed} End your turn; its report arrives as a [brigade] message.`;
 }
 
 /** Sends the Captain's result to the Coordinator. */

@@ -23,6 +23,7 @@ function applyEvent(task, e) {
   if (e.kind === "task_finished") return { ...task, state: "finished", note: e.summary, updatedAt: e.at };
   if (e.kind === "task_asked") return { ...task, state: "asking", note: e.question, updatedAt: e.at };
   if (e.kind === "message_sent" && e.to === "worker") return { ...task, state: "working", updatedAt: e.at };
+  if (e.kind === "worker_resumed") return { ...task, terminal: e.terminal, updatedAt: e.at };
   return task;
 }
 
@@ -125,6 +126,8 @@ export function eventText(e) {
       return `Project ${e.project} now starts from ${e.baseBranch}`;
     case "task_committed":
       return `${e.task}: committed ${e.sha.slice(0, 7)}`;
+    case "worker_resumed":
+      return `${e.task}: worker resumed`;
     case "task_finished":
       return `${e.task} finished: ${e.summary}`;
     case "task_asked":

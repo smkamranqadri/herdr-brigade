@@ -120,13 +120,21 @@ describe("sendToTask", () => {
     );
   });
 
-  it("says so when the worker is no longer running", async () => {
+  it("resumes an ended worker, then sends the follow-up to it", async () => {
     const f = fakeDeps();
     await createTask(f.deps, captain, { title: "Login", prompt: "p" });
     f.terminals.live.length = 0;
-    await expect(sendToTask(f.deps, captain, { task: "task-000001", message: "x" })).rejects.toThrow(
-      "The worker for task-000001 is not running",
+    f.terminals.live.push({
+      address: "t3",
+      name: "bg-cap-shop",
+      labels: { brigade: "main", role: "captain", project: "shop" },
+      status: null,
+    });
+    expect(await sendToTask(f.deps, captain, { task: "task-000001", message: "Also a test" })).toBe(
+      "Sent to task-000001. Its worker had ended, so brigade resumed it in terminal t2. End your turn; its report arrives as a [brigade] message.",
     );
+    expect(f.harnesses.requests[1]).toMatchObject({ resume: true, firstMessage: null });
+    expect(f.terminals.sent).toEqual([{ address: "t2", text: "[brigade] From your Captain: Also a test" }]);
   });
 });
 

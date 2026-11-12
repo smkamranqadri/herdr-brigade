@@ -33,6 +33,8 @@ function applyEvent(current: TaskView, e: BrigadeEvent): TaskView {
       return { ...current, state: "finished", note: e.summary, updatedAt: e.at };
     case "task_asked":
       return { ...current, state: "asking", note: e.question, updatedAt: e.at };
+    case "worker_resumed":
+      return { ...current, terminal: e.terminal, updatedAt: e.at };
     case "message_sent":
       return e.to === "worker" ? { ...current, state: "working", updatedAt: e.at } : current;
     default:

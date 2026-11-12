@@ -30,6 +30,14 @@ export type BrigadeEvent =
     }
   | {
       readonly at: string;
+      /** A task's ended worker continued its conversation in a new terminal. */
+      readonly kind: "worker_resumed";
+      readonly project: string;
+      readonly task: string;
+      readonly terminal: string;
+    }
+  | {
+      readonly at: string;
       readonly kind: "project_added";
       readonly project: string;
       readonly repo: string;

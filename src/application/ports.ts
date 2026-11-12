@@ -177,6 +177,8 @@ export interface Worktrees {
    * is `github` (owner/name) on github.com.
    */
   push(target: CommitTarget, github: string): Promise<void>;
+  /** Fails unless the task's worktree is still there, still of that repo, and on that branch: commit's checks. */
+  verify(target: CommitTarget): Promise<void>;
 }
 
 export interface PullRequest {
@@ -269,6 +271,12 @@ export interface Clock {
   wait(ms: number): Promise<void>;
 }
 
+/** Named locks shared by every brigade process. */
+export interface Locks {
+  /** Runs `work` while holding the lock `name`. Waits for it for a while, then fails with a message. */
+  withLock<T>(name: string, work: () => Promise<T>): Promise<T>;
+}
+
 /** Port to brigade's own folders on disk. */
 export interface Folders {
   /** Makes the folder, readable by the owner only, if it is missing. */
@@ -313,4 +321,5 @@ export interface Deps {
   readonly captainsFolder: string;
   /** Where the owner sees agents. */
   readonly workspace: Workspace;
+  readonly locks: Locks;
 }

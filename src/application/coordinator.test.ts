@@ -76,6 +76,14 @@ describe("startCoordinator", () => {
     expect(f.terminals.removed).toEqual(["t1"]);
   });
 
+  it("fails when the new-session start never becomes ready", async () => {
+    const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
+    f.terminals.trustOutcomes.push("no_session", "timeout");
+    await expect(startCoordinator(f.deps)).rejects.toThrow(
+      "The coordinator in terminal t2 started but never became ready.",
+    );
+  });
+
   it("does not start again when the agent fails for another reason", async () => {
     const f = fakeDeps({ trust: { text: "trust", cursor: ">", yes: "Yes", ready: [] } });
     f.terminals.trustOutcomes.push("timeout");

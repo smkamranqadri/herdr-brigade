@@ -75,8 +75,16 @@ describe("deriveTasks", () => {
       task: "task-b",
       text: "docs/",
     };
-    const events = [...EVENTS, followUp];
+    const resumed = {
+      at: "2026-11-09T10:03:00.000Z",
+      kind: "worker_resumed",
+      project: "shop",
+      task: "task-b",
+      terminal: "t77",
+    };
+    const events = [...EVENTS, followUp, resumed];
     expect(deriveTasks(events)).toEqual(domainDeriveTasks(events));
+    expect(deriveTasks(events).find((t) => t.id === "task-b")?.terminal).toBe("t77");
   });
 });
 
@@ -123,6 +131,12 @@ describe("buildModel", () => {
 });
 
 describe("eventText", () => {
+  it("names a resumed worker", () => {
+    expect(eventText({ kind: "worker_resumed", project: "shop", task: "task-b", terminal: "t77" })).toBe(
+      "task-b: worker resumed",
+    );
+  });
+
   it("names added and changed projects", () => {
     expect(
       eventText({ kind: "project_added", project: "blog", repo: "/r", baseBranch: "main", github: "acme/blog" }),

@@ -148,6 +148,15 @@ describe("deriveTasks", () => {
     });
   });
 
+  it("takes a resumed worker's new terminal and keeps the task's state", () => {
+    const resumed = { kind: "worker_resumed", project: "shop", task: "task-1", terminal: "t9", at: "2" } as const;
+    expect(deriveTasks([{ ...created, at: "1" }, resumed])[0]).toMatchObject({
+      terminal: "t9",
+      state: "working",
+      updatedAt: "2",
+    });
+  });
+
   it("ignores events for unknown tasks and unrelated events", () => {
     expect(
       deriveTasks([

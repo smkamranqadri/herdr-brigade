@@ -48,6 +48,10 @@ export class GitWorktrees implements Worktrees {
     return { sha, files: staged.length };
   }
 
+  async verify(target: CommitTarget): Promise<void> {
+    await verifiedGitDir(target);
+  }
+
   /**
    * Pushes only the task's branch, to the checked URL itself (not to the name "origin", which an agent could repoint
    * between the check and the push). No force: git refuses anything but a fast-forward.

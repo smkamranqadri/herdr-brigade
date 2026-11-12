@@ -26,6 +26,11 @@ export interface AgentLaunch {
   readonly readDirs?: readonly string[];
   /** See HarnessLaunchRequest.resume; a new session by default. */
   readonly resume?: boolean;
+  /**
+   * Resume or fail: when the agent finds no session, or never becomes ready, its terminal is removed and the launch
+   * fails. No retry in a new session. For a worker, whose brief is only in its old conversation.
+   */
+  readonly resumeOnly?: boolean;
 }
 
 /**
@@ -37,11 +42,28 @@ export interface AgentLaunch {
  */
 export async function launchAgent(deps: Deps, a: AgentLaunch, started: (address: string) => NewEvent): Promise<string> {
   const outcome = await launchOnce(deps, a, started);
-  if (outcome.result !== "no_session") return outcome.address;
+  if (outcome.result === "started") return outcome.address;
+  if (a.resumeOnly) return removeAndFail(deps, a, outcome.address, outcome.result);
+  if (outcome.result === "timeout") throw notReady(a.context.role, outcome.address);
   await deps.terminals.remove(outcome.address);
   const retry = await launchOnce(deps, { ...a, resume: false }, started);
-  if (retry.result === "no_session") throw notReady(a.context.role, retry.address);
+  if (retry.result !== "started") throw notReady(a.context.role, retry.address);
   return retry.address;
+}
+
+/** A resume-only launch that did not start: its terminal goes, so the next try starts clean. */
+async function removeAndFail(
+  deps: Deps,
+  a: AgentLaunch,
+  address: string,
+  why: "no_session" | "timeout",
+): Promise<never> {
+  await deps.terminals.remove(address);
+  const what =
+    why === "no_session"
+      ? `found no conversation to continue in ${a.cwd}`
+      : `in terminal ${address} never became ready`;
+  throw new BrigadeError(`The ${a.context.role} ${what}, so brigade removed it.`);
 }
 
 function notReady(role: string, address: string): BrigadeError {
@@ -67,12 +89,12 @@ function terminalFor(a: AgentLaunch, argv: readonly string[]): TerminalLaunch {
   return { name, cwd, labels: labelsFor(a), parent: context.parent, outliveParent, argv };
 }
 
-/** One start. On no_session it stops there: nothing was typed in, so the caller can start again. */
+/** One start. On no_session or timeout it stops there: nothing was typed in, so the caller decides. */
 async function launchOnce(
   deps: Deps,
   a: AgentLaunch,
   started: (address: string) => NewEvent,
-): Promise<{ address: string; result: "started" | "no_session" }> {
+): Promise<{ address: string; result: "started" | "no_session" | "timeout" }> {
   const { role } = a.context;
   const systemPrompt = await deps.prompts.render(role, { OWNER: deps.config.owner, ...a.promptValues });
   const plan = await deps.harnesses.prepare({
@@ -89,8 +111,7 @@ async function launchOnce(
   const address = await deps.terminals.launch(terminalFor(a, plan.argv));
   await record(deps, started(address));
   const trust = plan.trust ? await deps.terminals.answerTrust(address, plan.trust) : "ready";
-  if (trust === "timeout") throw notReady(role, address);
-  if (trust === "no_session") return { address, result: "no_session" };
+  if (trust === "timeout" || trust === "no_session") return { address, result: trust };
   if (plan.sendFirst !== null) await deps.terminals.send(address, plan.sendFirst);
   return { address, result: "started" };
 }

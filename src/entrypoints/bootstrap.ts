@@ -6,6 +6,7 @@ import { GitWorktrees } from "../adapters/git/gitWorktrees.ts";
 import { HarnessAdapters } from "../adapters/harness/harnesses.ts";
 import { HcTerminals, hcRunner } from "../adapters/hc/hcTerminals.ts";
 import { FilePrompts } from "../adapters/prompts/filePrompts.ts";
+import { FileLocks } from "../adapters/system/fileLocks.ts";
 import { localFolders, randomIds, systemClock } from "../adapters/system/system.ts";
 import type { BrigadeConfig } from "../domain/config.ts";
 import { FileConfigStore } from "../adapters/config/fileConfigStore.ts";
@@ -39,6 +40,7 @@ export function buildDeps(config: BrigadeConfig, paths: Paths): Deps {
     coordinatorFolder: coordinatorFolder(paths),
     captainsFolder: path.join(paths.stateDir, "captains"),
     workspace: buildWorkspace(paths),
+    locks: new FileLocks(path.join(paths.stateDir, "locks")),
   };
 }
 

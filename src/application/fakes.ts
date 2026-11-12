@@ -157,6 +157,30 @@ class FakeWorktrees {
     this.commits.push({ target, message });
     return Promise.resolve(this.nextCommit);
   }
+  readonly verified: CommitTarget[] = [];
+  /** When set, verify fails with it. */
+  verifyError: Error | null = null;
+  verify(target: CommitTarget): Promise<void> {
+    this.verified.push(target);
+    return this.verifyError ? Promise.reject(this.verifyError) : Promise.resolve();
+  }
+}
+
+/** Locks that run holders of one name in turn, and note each name taken. */
+class FakeLocks {
+  readonly taken: string[] = [];
+  private readonly queues = new Map<string, Promise<unknown>>();
+  withLock<T>(name: string, work: () => Promise<T>): Promise<T> {
+    const run = (this.queues.get(name) ?? Promise.resolve()).then(() => {
+      this.taken.push(name);
+      return work();
+    });
+    this.queues.set(
+      name,
+      run.catch(() => undefined),
+    );
+    return run;
+  }
 }
 
 class FakeConfigStore {
@@ -279,6 +303,7 @@ export interface Fakes {
   readonly github: FakeGitHub;
   readonly folders: FakeFolders;
   readonly workspace: FakeWorkspace;
+  readonly locks: FakeLocks;
 }
 
 /** Ids that count up across kinds: task-000001, note-000002, … */
@@ -342,6 +367,7 @@ export function fakeDeps(options: { trust?: TrustPrompt; config?: BrigadeConfig 
     repos: new FakeRepos(),
     github: new FakeGitHub(),
     workspace: new FakeWorkspace(),
+    locks: new FakeLocks(),
   };
   const mcpContexts: LaunchContext[] = [];
   const eventsAtTrust: number[] = [];
